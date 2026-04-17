@@ -93,19 +93,19 @@ const fn std_sigil(character: &'static str) -> Decoration {
 pub const ALL: &[Theme] = &[
     Theme {
         name: "Rainbow Pride",
-        background: "linear-gradient(135deg,#ff0000 0%,#ff7f00 16%,#ffff00 32%,#00ff00 48%,#0000ff 64%,#4b0082 80%,#8b00ff 100%)",
+        background: "linear-gradient(135deg,#FF0018 0%,#FFA52C 20%,#FFFF41 40%,#008018 60%,#0000F9 80%,#86007D 100%)",
         bright: false,
         decoration: std_sigil("✺"),
     },
     Theme {
         name: "Trans Pride",
-        background: "linear-gradient(135deg,#5bcefa 0%,#5bcefa 10%,#f5a9b8 32%,#ffffff 50%,#f5a9b8 68%,#5bcefa 90%,#5bcefa 100%)",
+        background: "linear-gradient(135deg,#55CDFC 0%,#F7A8B8 25%,#FFFFFF 50%,#F7A8B8 75%,#55CDFC 100%)",
         bright: false,
         decoration: std_sigil("⚧"),
     },
     Theme {
         name: "Lesbian Pride",
-        background: "linear-gradient(135deg,#d52d00 0%,#ef7627 16%,#ff9a56 32%,#ffffff 48%,#d162a4 64%,#b55690 80%,#a30262 100%)",
+        background: "linear-gradient(135deg,#D62900 0%,#EF7627 17%,#FF9B55 33%,#FFFFFF 50%,#D461A6 67%,#B55690 83%,#A50062 100%)",
         bright: false,
         decoration: Decoration::Sigil {
             character: "⚢",
@@ -119,7 +119,7 @@ pub const ALL: &[Theme] = &[
     Theme {
         // MLM flag (Gilbert Baker 2019): green → blue 7-stripe.
         name: "Gay/MLM Pride",
-        background: "linear-gradient(135deg,#078d70 0%,#26ceaa 16%,#98e8c1 32%,#ffffff 50%,#7bade2 64%,#5049cc 80%,#3d1a78 100%)",
+        background: "linear-gradient(135deg,#078D70 0%,#26CEAA 17%,#98E8C1 33%,#FFFFFF 50%,#7BADE2 67%,#5049CC 83%,#3D1A78 100%)",
         bright: false,
         decoration: Decoration::Sigil {
             character: "⚣",
@@ -132,7 +132,7 @@ pub const ALL: &[Theme] = &[
     },
     Theme {
         name: "Nonbinary Pride",
-        background: "linear-gradient(135deg,#fff433 0%,#ffffff 25%,#9b59d0 50%,#2c2c2c 75%)",
+        background: "linear-gradient(135deg,#FFF430 0%,#FFFFFF 33%,#9C59D1 67%,#000000 100%)",
         bright: false,
         decoration: std_sigil("✧"),
     },
@@ -140,7 +140,7 @@ pub const ALL: &[Theme] = &[
         // Morgan Carpenter 2013: warm gold field, purple ring (see base.html
         // for the SVG stroke colour that matches).
         name: "Intersex",
-        background: "#ffd800",
+        background: "#FFD800",
         bright: false,
         decoration: Decoration::CornerBadge { random_corner: true },
     },
@@ -158,31 +158,31 @@ pub const ALL: &[Theme] = &[
     },
     Theme {
         name: "Transfeminine",
-        background: "linear-gradient(135deg,#f5a9b8 0%,#f9d0e5 16%,#ffffff 32%,#c4a5ff 48%,#a855f7 64%,#5bcffa 80%)",
+        background: "linear-gradient(135deg,#73DEFF 0%,#FFE2EE 25%,#FFB5D6 50%,#FF8CBF 75%,#F34FA4 100%)",
         bright: false,
         decoration: std_sigil("⚧"),
     },
     Theme {
         name: "Transmasculine",
-        background: "linear-gradient(135deg,#5bcffa 0%,#4f9bd9 16%,#ffffff 32%,#4ade80 48%,#15803d 64%,#0f172a 80%)",
+        background: "linear-gradient(135deg,#FF8ABD 0%,#CDF5FF 25%,#9AEBFF 50%,#74DFFF 75%,#1BB2FF 100%)",
         bright: false,
         decoration: std_sigil("⚧"),
     },
     Theme {
         name: "Genderfluid",
-        background: "linear-gradient(135deg,#ff75a2 0%,#ffffff 20%,#be4bdb 40%,#000000 60%,#2b6bff 80%)",
+        background: "linear-gradient(135deg,#FF76A3 0%,#FFFFFF 25%,#BF11D7 50%,#000000 75%,#303CBE 100%)",
         bright: false,
         decoration: std_sigil("⚨"),
     },
     Theme {
         name: "Asexual",
-        background: "linear-gradient(135deg,#000000 0%,#a3a3a3 25%,#ffffff 50%,#810081 75%)",
+        background: "linear-gradient(135deg,#000000 0%,#A4A4A4 33%,#FFFFFF 67%,#810081 100%)",
         bright: false,
         decoration: std_sigil("✕"),
     },
     Theme {
         name: "Aromantic",
-        background: "linear-gradient(135deg,#3aa63f 0%,#a7d379 25%,#ffffff 50%,#a9a9a9 75%,#000000 100%)",
+        background: "linear-gradient(135deg,#3AA63F 0%,#A8D47A 25%,#FFFFFF 50%,#AAAAAA 75%,#000000 100%)",
         bright: false,
         decoration: std_sigil("❀"),
     },
@@ -191,7 +191,7 @@ pub const ALL: &[Theme] = &[
         // → light blue → dark blue. Previously used an aromantic/asexual
         // green mashup that matched no adopted flag.
         name: "Aroace",
-        background: "linear-gradient(135deg,#e28c00 0%,#eccd00 25%,#ffffff 50%,#62aedc 75%,#203856 100%)",
+        background: "linear-gradient(135deg,#E38D00 0%,#E7C601 25%,#FFFFFF 50%,#5FAAD7 75%,#1F3554 100%)",
         bright: false,
         decoration: std_sigil("❁"),
     },
@@ -210,7 +210,7 @@ pub const ALL: &[Theme] = &[
     },
     Theme {
         name: "Plural Pride",
-        background: "linear-gradient(135deg,#3f1a6b 0%,#6e3fa8 18%,#ffffff 50%,#4fa86b 82%,#1f5a32 100%)",
+        background: "linear-gradient(135deg,#30003A 0%,#6A00A0 25%,#FFFFFF 50%,#00A86B 75%,#003D1C 100%)",
         bright: false,
         decoration: std_sigil("⚯"),
     },
@@ -240,7 +240,7 @@ pub const ALL: &[Theme] = &[
     },
     Theme {
         name: "Polyamory",
-        background: "linear-gradient(135deg,#0057B7 0%,#0057B7 24%,#D62828 40%,#D62828 72%,#000000 100%)",
+        background: "linear-gradient(135deg,#E93479 0%,#1C4FE5 50%,#6B1D78 100%)",
         bright: false,
         decoration: std_sigil("∞❤"),
     },
