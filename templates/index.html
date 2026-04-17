@@ -2,6 +2,10 @@
 
 {% block title %}Seize your {{ base_domain }} handle{% endblock %}
 
+{% block shell_topleft %}<a href="/a" class="corner-q" aria-label="About this project">?</a>{% endblock %}
+
+{% block footer_right %}<a href="/m">Manage / Delete handles</a>{% endblock %}
+
 {% block content %}
 <h1>Seize your {{ base_domain }} bsky handle</h1>
 <p class="hint">
@@ -37,11 +41,6 @@
   recover it for you. That's the tradeoff for control.
 </p>
 <div id="claimStatus" class="status" style="margin-top:0.5rem;"></div>
-
-<div class="footer">
-  <a href="/a" class="footer-left" aria-label="About this project">?</a>
-  <a href="/m">Manage / Delete handles</a>
-</div>
 {% endblock %}
 
 {% block scripts %}

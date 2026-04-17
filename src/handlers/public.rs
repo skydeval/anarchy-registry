@@ -245,6 +245,20 @@ fn corner_css(corner: &str) -> &'static str {
     }
 }
 
+/// Per-render randomization of the gradient direction so the same theme
+/// can land on different orientations across reloads. Only rewrites
+/// `linear-gradient(...)` values — solid colors (Intersex) pass through
+/// unchanged. Must stay in sync with the JS `randomizeGradient` in
+/// `templates/base.html`.
+fn randomize_gradient_direction(bg: &str) -> String {
+    if !bg.starts_with("linear-gradient") {
+        return bg.to_string();
+    }
+    const DIRECTIONS: [&str; 3] = ["to right", "135deg", "45deg"];
+    let dir = DIRECTIONS[rand::thread_rng().gen_range(0..DIRECTIONS.len())];
+    bg.replacen("135deg", dir, 1)
+}
+
 #[derive(Template)]
 #[template(path = "index.html")]
 struct IndexPage<'a> {
@@ -253,6 +267,10 @@ struct IndexPage<'a> {
     /// `base_domain` JSON-encoded (with surrounding quotes) so it can
     /// be dropped into a JS initializer literal without bespoke escaping.
     base_domain_json: String,
+    /// The theme's `background` CSS with a randomized gradient direction
+    /// baked in (solid colors pass through). The JS applies the same
+    /// randomization on later swaps.
+    background: String,
     deco: DecorationView,
 }
 
@@ -262,6 +280,7 @@ struct ManagePage<'a> {
     theme: &'a Theme,
     base_domain: &'a str,
     base_domain_json: String,
+    background: String,
     deco: DecorationView,
 }
 
@@ -270,6 +289,7 @@ struct ManagePage<'a> {
 struct AboutPage<'a> {
     theme: &'a Theme,
     base_domain: &'a str,
+    background: String,
     deco: DecorationView,
 }
 
@@ -279,6 +299,7 @@ pub async fn index_page(State(state): State<AppState>) -> AppResult<Response> {
         theme: t,
         base_domain: &state.base_domain,
         base_domain_json: json_string(&state.base_domain),
+        background: randomize_gradient_direction(t.background),
         deco: DecorationView::from_theme(t),
     })
 }
@@ -289,6 +310,7 @@ pub async fn manage_page(State(state): State<AppState>) -> AppResult<Response> {
         theme: t,
         base_domain: &state.base_domain,
         base_domain_json: json_string(&state.base_domain),
+        background: randomize_gradient_direction(t.background),
         deco: DecorationView::from_theme(t),
     })
 }
@@ -298,6 +320,7 @@ pub async fn about_page(State(state): State<AppState>) -> AppResult<Response> {
     render_page(AboutPage {
         theme: t,
         base_domain: &state.base_domain,
+        background: randomize_gradient_direction(t.background),
         deco: DecorationView::from_theme(t),
     })
 }
@@ -379,7 +402,7 @@ mod tests {
 
     #[test]
     fn decoration_view_none_for_did_theme() {
-        let did = theme::ALL.iter().find(|t| t.name == "DID").unwrap();
+        let did = theme::ALL.iter().find(|t| t.name == "DID Awareness").unwrap();
         let v = DecorationView::from_theme(did);
         assert!(!v.is_sigil);
         assert!(!v.is_badge);
@@ -392,6 +415,7 @@ mod tests {
             theme: t,
             base_domain: "anarchy.lgbt",
             base_domain_json: json_string("anarchy.lgbt"),
+            background: randomize_gradient_direction(t.background),
             deco: DecorationView::from_theme(t),
         };
         let html = page.render().expect("template renders");
@@ -404,11 +428,12 @@ mod tests {
 
     #[test]
     fn manage_template_renders_and_has_js_base_domain() {
-        let t = theme::ALL.iter().find(|t| t.name == "Gay Pride").unwrap();
+        let t = theme::ALL.iter().find(|t| t.name == "Gay/MLM Pride").unwrap();
         let page = ManagePage {
             theme: t,
             base_domain: "anarchy.lgbt",
             base_domain_json: json_string("anarchy.lgbt"),
+            background: randomize_gradient_direction(t.background),
             deco: DecorationView::from_theme(t),
         };
         let html = page.render().expect("template renders");
@@ -419,10 +444,11 @@ mod tests {
 
     #[test]
     fn about_template_renders_with_no_decoration_for_did() {
-        let t = theme::ALL.iter().find(|t| t.name == "DID").unwrap();
+        let t = theme::ALL.iter().find(|t| t.name == "DID Awareness").unwrap();
         let page = AboutPage {
             theme: t,
             base_domain: "anarchy.lgbt",
+            background: randomize_gradient_direction(t.background),
             deco: DecorationView::from_theme(t),
         };
         let html = page.render().expect("template renders");
@@ -441,6 +467,7 @@ mod tests {
             theme: t,
             base_domain: "anarchy.lgbt",
             base_domain_json: json_string("anarchy.lgbt"),
+            background: randomize_gradient_direction(t.background),
             deco: DecorationView::from_theme(t),
         };
         let html = page.render().unwrap();
@@ -455,6 +482,7 @@ mod tests {
             theme: t,
             base_domain: "anarchy.lgbt",
             base_domain_json: json_string("anarchy.lgbt"),
+            background: randomize_gradient_direction(t.background),
             deco: DecorationView::from_theme(t),
         };
         let html = page.render().unwrap();
@@ -464,5 +492,60 @@ mod tests {
         assert!(html.contains("font-size: 16px"));
         assert!(html.contains("opacity: 0.75"));
         assert!(html.contains("cursor: default"));
+    }
+
+    #[test]
+    fn randomize_gradient_direction_replaces_135deg() {
+        let out = randomize_gradient_direction("linear-gradient(135deg,#fff 0%,#000 100%)");
+        // Must still be a gradient, and must not carry the default 135deg
+        // unless that's what RNG landed on. Either way it picks from the
+        // documented three-direction pool.
+        assert!(out.starts_with("linear-gradient("));
+        assert!(
+            out.contains("to right") || out.contains("135deg") || out.contains("45deg")
+        );
+    }
+
+    #[test]
+    fn randomize_gradient_direction_passes_solid_through() {
+        assert_eq!(randomize_gradient_direction("#ffd800"), "#ffd800");
+    }
+
+    #[test]
+    fn index_template_has_corner_q_and_footer_controls() {
+        let t = theme::ALL.iter().find(|t| t.name == "Trans Pride").unwrap();
+        let page = IndexPage {
+            theme: t,
+            base_domain: "anarchy.lgbt",
+            base_domain_json: json_string("anarchy.lgbt"),
+            background: randomize_gradient_direction(t.background),
+            deco: DecorationView::from_theme(t),
+        };
+        let html = page.render().unwrap();
+        // Index-only: rainbow "?" in the top-left corner.
+        assert!(html.contains("class=\"corner-q\""));
+        // Shared: dice + custom theme picker grouped in the footer.
+        assert!(html.contains("footer-left-group"));
+        assert!(html.contains("id=\"dice\""));
+        assert!(html.contains("id=\"theme-picker\""));
+        assert!(html.contains("id=\"theme-picker-button\""));
+        assert!(html.contains("id=\"theme-picker-list\""));
+        // Footer right: manage link.
+        assert!(html.contains("href=\"/m\""));
+    }
+
+    #[test]
+    fn manage_template_omits_corner_q() {
+        let t = theme::ALL.iter().find(|t| t.name == "Trans Pride").unwrap();
+        let page = ManagePage {
+            theme: t,
+            base_domain: "anarchy.lgbt",
+            base_domain_json: json_string("anarchy.lgbt"),
+            background: randomize_gradient_direction(t.background),
+            deco: DecorationView::from_theme(t),
+        };
+        let html = page.render().unwrap();
+        assert!(!html.contains("class=\"corner-q\""));
+        assert!(html.contains("href=\"/\""));
     }
 }

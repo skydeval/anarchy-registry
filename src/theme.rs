@@ -118,7 +118,7 @@ pub const ALL: &[Theme] = &[
     },
     Theme {
         // MLM flag (Gilbert Baker 2019): green → blue 7-stripe.
-        name: "Gay Pride",
+        name: "Gay/MLM Pride",
         background: "linear-gradient(135deg,#078d70 0%,#26ceaa 16%,#98e8c1 32%,#ffffff 50%,#7bade2 64%,#5049cc 80%,#3d1a78 100%)",
         bright: false,
         decoration: Decoration::Sigil {
@@ -157,13 +157,13 @@ pub const ALL: &[Theme] = &[
         decoration: std_sigil("⧖"),
     },
     Theme {
-        name: "Transfemme",
+        name: "Transfeminine",
         background: "linear-gradient(135deg,#f5a9b8 0%,#f9d0e5 16%,#ffffff 32%,#c4a5ff 48%,#a855f7 64%,#5bcffa 80%)",
         bright: false,
         decoration: std_sigil("⚧"),
     },
     Theme {
-        name: "Transmasc",
+        name: "Transmasculine",
         background: "linear-gradient(135deg,#5bcffa 0%,#4f9bd9 16%,#ffffff 32%,#4ade80 48%,#15803d 64%,#0f172a 80%)",
         bright: false,
         decoration: std_sigil("⚧"),
@@ -209,31 +209,31 @@ pub const ALL: &[Theme] = &[
         },
     },
     Theme {
-        name: "Plural",
+        name: "Plural Pride",
         background: "linear-gradient(135deg,#3f1a6b 0%,#6e3fa8 18%,#ffffff 50%,#4fa86b 82%,#1f5a32 100%)",
         bright: false,
         decoration: std_sigil("⚯"),
     },
     Theme {
-        name: "DID",
+        name: "DID Awareness",
         background: "linear-gradient(135deg,#020617 0%,#111827 25%,#312e81 50%,#6d28d9 75%,#f472b6 100%)",
         bright: false,
         decoration: Decoration::None,
     },
     Theme {
-        name: "OSDD",
+        name: "OSDD Awareness",
         background: "linear-gradient(135deg,#020617 0%,#1f2937 20%,#4b5563 40%,#6366f1 65%,#a855f7 100%)",
         bright: false,
         decoration: std_sigil("⟁"),
     },
     Theme {
-        name: "Depersonalization",
+        name: "Depersonalization Awareness",
         background: "linear-gradient(135deg,#0f172a 0%,#1f2937 18%,#e5e7eb 45%,#c4b5fd 70%,#f9a8d4 100%)",
         bright: false,
         decoration: std_sigil("◌"),
     },
     Theme {
-        name: "Derealization",
+        name: "Derealization Awareness",
         background: "linear-gradient(135deg,#020617 0%,#111827 30%,#22c55e 55%,#38bdf8 75%,#f97316 100%)",
         bright: false,
         decoration: std_sigil("⌬"),
@@ -288,7 +288,7 @@ mod tests {
             }
         };
         check("Lesbian Pride", "#fb7185", 36, 800, 0.9, "BottomRight");
-        check("Gay Pride", "#3b82f6", 30, 700, 0.9, "TopLeft");
+        check("Gay/MLM Pride", "#3b82f6", 30, 700, 0.9, "TopLeft");
         check("Autism", "#ffdd00", 38, 800, 0.9, "TopRight");
     }
 
@@ -296,7 +296,7 @@ mod tests {
     fn intersex_is_corner_badge_and_did_is_undecorated() {
         let intersex = ALL.iter().find(|t| t.name == "Intersex").unwrap();
         assert!(matches!(intersex.decoration, Decoration::CornerBadge { .. }));
-        let did = ALL.iter().find(|t| t.name == "DID").unwrap();
+        let did = ALL.iter().find(|t| t.name == "DID Awareness").unwrap();
         assert!(matches!(did.decoration, Decoration::None));
     }
 
@@ -334,7 +334,7 @@ mod tests {
         assert_eq!(v["decoration"]["type"], "corner-badge");
         assert_eq!(v["decoration"]["random_corner"], true);
 
-        let did = ALL.iter().find(|t| t.name == "DID").unwrap();
+        let did = ALL.iter().find(|t| t.name == "DID Awareness").unwrap();
         let v = serde_json::to_value(did).unwrap();
         assert_eq!(v["decoration"]["type"], "none");
     }

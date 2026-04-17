@@ -21,7 +21,7 @@
       align-items: center;
       color: var(--fg-main);
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: {{ theme.background }};
+      background: {{ background }};
       background-size: cover;
       background-position: center;
     }
@@ -174,12 +174,13 @@
       text-decoration: none;
     }
     .footer a:hover { text-decoration: underline; }
-    /* Rainbow "?" anchor with a radial glow and "Lore…" tooltip —
-       matches the worker's .footer-left styling (anarchy-worker.js). No
-       circle, no border — the glow + gradient-text are the only chrome. */
-    .footer-left {
-      position: relative;
-      display: inline-block;
+    /* Rainbow "?" link in the shell's top-left corner (index page only).
+       Naked character, no tooltip, no circle — easter-egg energy. */
+    .corner-q {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      font-size: 1rem;
       font-weight: 700;
       text-decoration: none;
       color: transparent;
@@ -197,49 +198,19 @@
       text-shadow:
         0 0 6px rgba(0, 0, 0, 0.65),
         0 0 12px rgba(0, 0, 0, 0.85);
+      z-index: 2;
     }
-    .footer-left:hover { text-decoration: none; }
-    .footer-left::before {
-      content: "";
-      position: absolute;
-      inset: -0.25rem -0.35rem;
-      border-radius: 999px;
-      background: radial-gradient(circle, rgba(255,255,255,0.85), transparent 70%);
-      opacity: 0.8;
-      filter: blur(4px);
-      z-index: -1;
-      pointer-events: none;
-    }
-    .footer-left::after {
-      content: "Lore…";
-      position: absolute;
-      left: 50%;
-      bottom: 130%;
-      transform: translateX(-50%) translateY(4px);
-      padding: 0.25rem 0.5rem;
-      border-radius: 999px;
-      background: rgba(15, 23, 42, 0.95);
-      color: #e5e7eb;
-      font-size: 0.7rem;
-      white-space: nowrap;
-      opacity: 0;
-      pointer-events: none;
-      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.8);
-      transition: opacity 0.15s ease-out, transform 0.15s ease-out;
-    }
-    .footer-left:hover::after {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0);
-    }
+    .corner-q:hover { text-decoration: none; }
 
-    /* Dice — naked glyph in the shell's top-left corner. Absolute
-       positioning keeps it out of the normal flow so nothing else in
-       the shell shifts. §6 spec: 16px, opacity 0.75 → 0.85 on hover,
-       default cursor, no chrome. */
+    /* Dice 🎲 + theme <select>, side by side. */
+    .footer-left-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    /* §6 spec: 16px glyph, opacity 0.75 → 0.85 on hover, default cursor,
+       no chrome. Lives in the footer flow. */
     .dice {
-      position: absolute;
-      top: 16px;
-      left: 16px;
       font-size: 16px;
       color: rgba(255,255,255,0.92);
       background: none;
@@ -256,6 +227,50 @@
     .dice:focus-visible {
       outline: 1px solid white;
       outline-offset: 2px;
+    }
+    /* Custom theme picker: a button that opens an absolutely-positioned
+       list of all themes. Lives inside a relative-position wrapper so
+       the list anchors to the button's edge. Exists because native
+       <select> doesn't fire `change` when you re-pick the already-
+       selected option, and we want re-picking the active theme to
+       still re-randomize the gradient direction. */
+    .theme-picker {
+      position: relative;
+    }
+    .theme-picker-button {
+      background: rgba(8, 0, 20, 0.9);
+      border: 1px solid rgba(120, 92, 160, 0.4);
+      color: #c7b3d7;
+      font-size: 0.78rem;
+      border-radius: 6px;
+      padding: 4px 8px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .theme-picker-list {
+      position: absolute;
+      bottom: 100%;
+      left: 0;
+      margin-bottom: 4px;
+      min-width: 220px;
+      background: rgba(8, 0, 20, 0.95);
+      border: 1px solid rgba(120, 92, 160, 0.4);
+      border-radius: 8px;
+      padding: 4px 0;
+      max-height: 300px;
+      overflow-x: hidden;
+      overflow-y: auto;
+      z-index: 10;
+    }
+    .theme-picker-item {
+      padding: 4px 12px;
+      cursor: pointer;
+      color: #c7b3d7;
+      font-size: 0.78rem;
+      white-space: nowrap;
+    }
+    .theme-picker-item:hover {
+      background: rgba(120, 92, 160, 0.3);
     }
 
     /* Sigil + corner-badge: fixed-position, non-interactive overlay. */
@@ -322,34 +337,111 @@
   {% endif %}
 
   <main class="shell{% block shell_class %}{% endblock %}">
-    <button class="dice" id="dice" type="button" aria-label="shuffle theme">🎲</button>
+    {% block shell_topleft %}{% endblock %}
     {% block content %}{% endblock %}
+    <div class="footer">
+      <div class="footer-left-group">
+        <button class="dice" id="dice" type="button" aria-label="shuffle theme">🎲</button>
+        <div class="theme-picker" id="theme-picker">
+          <button
+            class="theme-picker-button"
+            id="theme-picker-button"
+            type="button"
+            aria-haspopup="listbox"
+            aria-expanded="false"
+          ></button>
+          <div class="theme-picker-list is-hidden" id="theme-picker-list" role="listbox"></div>
+        </div>
+      </div>
+      <div class="footer-right">
+        {% block footer_right %}{% endblock %}
+      </div>
+    </div>
   </main>
 
   <script>
-    // Dice reroll. Fetches the full theme catalog once and swaps the
-    // live background + sigil on click. Strict single source of truth:
-    // the JS mirrors the server's `DecorationView` rendering logic so
-    // nothing drifts between first paint and reroll.
+    // Theme controls: 🎲 dice for "surprise me" and a <select> for
+    // "show me this one". Each apply() picks a random gradient
+    // direction so the same theme can land on different orientations
+    // between swaps. Mirrors the server's `DecorationView` +
+    // `randomize_gradient_direction` logic so first paint and later
+    // swaps stay consistent.
     (async () => {
       const dice = document.getElementById('dice');
-      if (!dice) return;
+      const picker = document.getElementById('theme-picker');
+      const pickerButton = document.getElementById('theme-picker-button');
+      const pickerList = document.getElementById('theme-picker-list');
+      if (!dice || !picker || !pickerButton || !pickerList) return;
       let themes = [];
       try {
         const res = await fetch('/themes');
         if (res.ok) themes = await res.json();
       } catch (_) { return; }
+      if (themes.length < 2) return;
+
+      // Button shows the active theme name.
+      pickerButton.textContent = document.body.dataset.theme;
+
+      // Build one <div role="option"> per theme. Click on any item —
+      // even the currently-active one — applies the theme (with a
+      // fresh random gradient direction) and closes the list.
+      for (const t of themes) {
+        const item = document.createElement('div');
+        item.className = 'theme-picker-item';
+        item.setAttribute('role', 'option');
+        item.textContent = t.name;
+        item.addEventListener('click', () => {
+          apply(t);
+          closeList();
+        });
+        pickerList.appendChild(item);
+      }
+
+      function openList() {
+        pickerList.classList.remove('is-hidden');
+        pickerButton.setAttribute('aria-expanded', 'true');
+      }
+      function closeList() {
+        pickerList.classList.add('is-hidden');
+        pickerButton.setAttribute('aria-expanded', 'false');
+      }
+      pickerButton.addEventListener('click', () => {
+        if (pickerList.classList.contains('is-hidden')) openList();
+        else closeList();
+      });
+
+      // Close the list when clicking anywhere outside the picker.
+      // Same-tick propagation: a click on the button first toggles the
+      // list, then this handler fires but target is inside the picker
+      // so it's a no-op — the list stays open.
+      document.addEventListener('click', (e) => {
+        if (!picker.contains(e.target)) closeList();
+      });
+
       dice.addEventListener('click', () => {
-        if (themes.length < 2) return;
         const current = document.body.dataset.theme;
         const pool = themes.filter(t => t.name !== current);
         const next = pool[Math.floor(Math.random() * pool.length)];
         apply(next);
       });
 
+      const DIRECTIONS = ['to right', '135deg', '45deg'];
+      // Regex-based replace: swaps whatever direction is currently in
+      // the first argument of `linear-gradient(...)` (e.g. `135deg`,
+      // `45deg`, `to right`) with a fresh random pick. Robust against
+      // repeated applies that would otherwise leave a non-135deg value
+      // stuck after the first swap.
+      const GRADIENT_DIR_RE = /linear-gradient\(\s*[^,]+,/;
+      function randomizeGradient(bg) {
+        if (!bg.startsWith('linear-gradient')) return bg;
+        const dir = DIRECTIONS[Math.floor(Math.random() * DIRECTIONS.length)];
+        return bg.replace(GRADIENT_DIR_RE, 'linear-gradient(' + dir + ',');
+      }
+
       function apply(t) {
-        document.body.style.background = t.background;
+        document.body.style.background = randomizeGradient(t.background);
         document.body.dataset.theme = t.name;
+        pickerButton.textContent = t.name;
         document.querySelectorAll('.sigil, .corner-badge').forEach(n => n.remove());
         const node = buildDecoration(t.decoration);
         if (node) document.body.insertBefore(node, document.body.firstChild);
