@@ -64,15 +64,16 @@
     }
     .shell label {
       display: block;
-      font-size: 0.9rem;
+      font-size: 0.95rem;
       margin-bottom: 0.3rem;
       color: var(--fg-muted);
     }
     .shell h1 {
       margin: 0 0 0.8rem 0;
-      font-size: 1.55rem;
+      font-size: 2rem;
       font-weight: 650;
       letter-spacing: 0.01em;
+      line-height: 1.2;
     }
     .shell p {
       margin: 0.7rem 0;
@@ -97,7 +98,7 @@
       background: #334155;
       color: #f1f5f9;
       font-weight: 600;
-      font-size: 0.95rem;
+      font-size: 1rem;
       font-family: inherit;
       cursor: pointer;
       transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
@@ -124,7 +125,7 @@
     }
     button.danger:hover { filter: brightness(1.08); }
     .hint {
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       color: var(--fg-muted);
     }
     /* The subdomain input overlays a rainbow-gradient ".base_domain"
@@ -313,8 +314,8 @@
   {% if deco.is_sigil %}
     <div class="sigil" style="{{ deco.placement_css }} color:{{ deco.color }};font-size:{{ deco.size_px }}px;font-weight:{{ deco.weight }};opacity:{{ deco.opacity }};">{{ deco.character }}</div>
   {% else if deco.is_badge %}
-    <div class="corner-badge" data-corner="{{ deco.badge_corner }}" style="{{ deco.badge_corner_css }} width:60px;height:60px;">
-      <svg viewBox="0 0 100 100" width="60" height="60" xmlns="http://www.w3.org/2000/svg">
+    <div class="corner-badge" data-corner="{{ deco.badge_corner }}" style="{{ deco.badge_corner_css }} width:160px;height:160px;opacity:0.98;">
+      <svg viewBox="0 0 100 100" width="160" height="160" xmlns="http://www.w3.org/2000/svg">
         <circle cx="50" cy="50" r="24" fill="none" stroke="#7a00ac" stroke-width="10"/>
       </svg>
     </div>
@@ -374,9 +375,9 @@
           const wrap = document.createElement('div');
           wrap.className = 'corner-badge';
           wrap.dataset.corner = corner;
-          wrap.setAttribute('style', cornerCss(corner) + 'width:60px;height:60px;');
+          wrap.setAttribute('style', cornerCss(corner) + 'width:160px;height:160px;opacity:0.98;');
           wrap.innerHTML =
-            '<svg viewBox="0 0 100 100" width="60" height="60" xmlns="http://www.w3.org/2000/svg">' +
+            '<svg viewBox="0 0 100 100" width="160" height="160" xmlns="http://www.w3.org/2000/svg">' +
               '<circle cx="50" cy="50" r="24" fill="none" stroke="#7a00ac" stroke-width="10"/>' +
             '</svg>';
           return wrap;
