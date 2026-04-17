@@ -237,14 +237,16 @@
     .theme-picker {
       position: relative;
     }
+    /* The trigger button reads as plain muted footer text at rest —
+       no border, no fill, no pointer. Hidden-feature energy: the user
+       only discovers it's interactive once they click. */
     .theme-picker-button {
-      background: rgba(8, 0, 20, 0.9);
-      border: 1px solid rgba(120, 92, 160, 0.4);
+      background: transparent;
+      border: none;
       color: #c7b3d7;
       font-size: 0.78rem;
-      border-radius: 6px;
       padding: 4px 8px;
-      cursor: pointer;
+      cursor: default !important;
       font-family: inherit;
     }
     .theme-picker-list {
@@ -261,10 +263,11 @@
       overflow-x: hidden;
       overflow-y: auto;
       z-index: 10;
+      cursor: default !important;
     }
     .theme-picker-item {
       padding: 4px 12px;
-      cursor: pointer;
+      cursor: default !important;
       color: #c7b3d7;
       font-size: 0.78rem;
       white-space: nowrap;
@@ -425,16 +428,20 @@
         apply(next);
       });
 
-      const DIRECTIONS = ['to right', '135deg', '45deg'];
-      // Regex-based replace: swaps whatever direction is currently in
-      // the first argument of `linear-gradient(...)` (e.g. `135deg`,
-      // `45deg`, `to right`) with a fresh random pick. Robust against
-      // repeated applies that would otherwise leave a non-135deg value
-      // stuck after the first swap.
-      const GRADIENT_DIR_RE = /linear-gradient\(\s*[^,]+,/;
+      const DIRECTIONS = ['to right', 'to bottom', '135deg', '45deg'];
+      // Swap whatever direction sits in the first argument of
+      // `linear-gradient(...)` with a fresh random pick. The capture
+      // group lets us read the current direction so we can exclude it
+      // from the pool — a reroll never lands on the same orientation
+      // twice in a row. Must stay in sync with the Rust
+      // `randomize_gradient_direction` on the server side.
+      const GRADIENT_DIR_RE = /linear-gradient\(\s*([^,]+),/;
       function randomizeGradient(bg) {
         if (!bg.startsWith('linear-gradient')) return bg;
-        const dir = DIRECTIONS[Math.floor(Math.random() * DIRECTIONS.length)];
+        const match = bg.match(GRADIENT_DIR_RE);
+        const current = match ? match[1].trim() : null;
+        const pool = DIRECTIONS.filter(d => d !== current);
+        const dir = pool[Math.floor(Math.random() * pool.length)];
         return bg.replace(GRADIENT_DIR_RE, 'linear-gradient(' + dir + ',');
       }
 

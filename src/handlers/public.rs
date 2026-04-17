@@ -248,15 +248,28 @@ fn corner_css(corner: &str) -> &'static str {
 /// Per-render randomization of the gradient direction so the same theme
 /// can land on different orientations across reloads. Only rewrites
 /// `linear-gradient(...)` values — solid colors (Intersex) pass through
-/// unchanged. Must stay in sync with the JS `randomizeGradient` in
-/// `templates/base.html`.
+/// unchanged. The current direction is parsed out of the gradient's
+/// first argument and excluded from the new pick, so a reroll never
+/// lands on the same orientation twice in a row. Must stay in sync
+/// with the JS `randomizeGradient` in `templates/base.html`.
 fn randomize_gradient_direction(bg: &str) -> String {
-    if !bg.starts_with("linear-gradient") {
+    const PREFIX: &str = "linear-gradient(";
+    if !bg.starts_with(PREFIX) {
         return bg.to_string();
     }
-    const DIRECTIONS: [&str; 3] = ["to right", "135deg", "45deg"];
-    let dir = DIRECTIONS[rand::thread_rng().gen_range(0..DIRECTIONS.len())];
-    bg.replacen("135deg", dir, 1)
+    const DIRECTIONS: [&str; 4] = ["to right", "to bottom", "135deg", "45deg"];
+
+    let rest = &bg[PREFIX.len()..];
+    let comma_idx = match rest.find(',') {
+        Some(i) => i,
+        None => return bg.to_string(),
+    };
+    let current = rest[..comma_idx].trim();
+
+    let pool: Vec<&&str> = DIRECTIONS.iter().filter(|d| **d != current).collect();
+    let dir = pool[rand::thread_rng().gen_range(0..pool.len())];
+
+    format!("{}{}{}", PREFIX, dir, &rest[comma_idx..])
 }
 
 #[derive(Template)]
@@ -495,15 +508,18 @@ mod tests {
     }
 
     #[test]
-    fn randomize_gradient_direction_replaces_135deg() {
+    fn randomize_gradient_direction_excludes_current() {
         let out = randomize_gradient_direction("linear-gradient(135deg,#fff 0%,#000 100%)");
-        // Must still be a gradient, and must not carry the default 135deg
-        // unless that's what RNG landed on. Either way it picks from the
-        // documented three-direction pool.
         assert!(out.starts_with("linear-gradient("));
+        // With `135deg` as the current direction, the exclusion logic
+        // must pick one of the other three from the four-item pool.
         assert!(
-            out.contains("to right") || out.contains("135deg") || out.contains("45deg")
+            out.contains("to right")
+                || out.contains("to bottom")
+                || out.contains("45deg,")
         );
+        // And crucially the reroll must not re-select `135deg`.
+        assert!(!out.contains("135deg"));
     }
 
     #[test]
