@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}Manage your {{ base_domain }} handles{% endblock %}
+
+{% block content %}
+<h1>Manage your handles</h1>
+<p>Enter your secret key to manage/delete your registered handles on <strong>{{ base_domain }}</strong>.</p>
+
+<label for="secret-input">Secret key</label>
+<input type="text" id="secret-input" placeholder="your secret key" autocomplete="off">
+
+<button id="load-btn" class="primary" style="margin-top:0.8rem;">Show my handles</button>
+
+<div class="status is-hidden" id="status">No lookup yet.</div>
+<div id="results" style="margin-top:0.8rem;"></div>
+
+<div class="footer">
+  <a href="/a" class="footer-left" aria-label="About this project">?</a>
+  <a href="/">← Return to main page</a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const baseDomain = {{ base_domain_json|safe }};
+  let currentDid = null;
+
+  document.getElementById('load-btn').onclick = loadHandles;
+
+  async function loadHandles() {
+    const secret = document.getElementById('secret-input').value.trim();
+    const status = document.getElementById('status');
+    const results = document.getElementById('results');
+    status.classList.remove('is-hidden');
+
+    if (!secret) {
+      status.textContent = 'Please enter your secret key.';
+      results.innerHTML = '';
+      return;
+    }
+    status.textContent = 'Loading\u2026';
+    results.innerHTML = '';
+
+    let res;
+    try {
+      res = await fetch('/manage', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'list', secret }),
+      });
+    } catch (_) {
+      status.textContent = 'Network error. Try again in a moment.';
+      return;
+    }
+
+    if (!res.ok) {
+      status.textContent = 'Invalid secret or no handles found.';
+      return;
+    }
+
+    const data = await res.json();
+    currentDid = data.did || null;
+    const handles = data.handles || [];
+    status.textContent =
+      'DID: ' + data.did + ' \u2022 ' + handles.length + ' handle(s)';
+
+    handles.forEach(h => {
+      const row = document.createElement('div');
+      row.className = 'handle-row';
+      const span = document.createElement('span');
+      span.innerHTML = '<code>' + h.sub + '.' + baseDomain + '</code>';
+      const btn = document.createElement('button');
+      btn.className = 'danger';
+      btn.textContent = 'Delete';
+      btn.onclick = () => deleteHandle(secret, h.sub, row);
+      row.appendChild(span);
+      row.appendChild(btn);
+      results.appendChild(row);
+    });
+  }
+
+  async function deleteHandle(secret, sub, rowEl) {
+    if (!confirm('Delete ' + sub + '.' + baseDomain + ' ?')) return;
+    let res;
+    try {
+      res = await fetch('/manage', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'delete', secret, sub }),
+      });
+    } catch (_) {
+      alert('Network error. Try again in a moment.');
+      return;
+    }
+    if (!res.ok) {
+      alert('Failed to delete handle.');
+      return;
+    }
+    rowEl.remove();
+    const remaining = document.querySelectorAll('.handle-row').length;
+    const status = document.getElementById('status');
+    if (remaining === 0) {
+      status.textContent = 'No handles currently registered for this secret key.';
+    } else {
+      status.textContent =
+        (currentDid ? 'DID: ' + currentDid + ' \u2022 ' : '') +
+        remaining + ' handle(s)';
+    }
+  }
+</script>
+{% endblock %}

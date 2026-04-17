@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>{% block title %}{{ base_domain }}{% endblock %}</title>
+  <style>
+    :root {
+      --fg-main: #ffffff;
+      --fg-muted: rgba(255,255,255,0.78);
+      --shell-radius: 14px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 1.5rem;
+      min-height: 100dvh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: var(--fg-main);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: {{ theme.background }};
+      background-size: cover;
+      background-position: center;
+    }
+    .shell {
+      position: relative;
+      background: rgba(255,255,255,0.14);
+      border: 1px solid rgba(255,255,255,0.22);
+      backdrop-filter: blur(12px);
+      padding: 2rem 2rem 1.5rem 2rem;
+      border-radius: var(--shell-radius);
+      max-width: 560px;
+      width: 100%;
+      box-shadow: 0 8px 22px rgba(0,0,0,0.4);
+      z-index: 1;
+    }
+    body.fog .shell {
+      background: rgba(0,0,0,0.18);
+      border-color: rgba(255,255,255,0.26);
+    }
+    .shell input {
+      width: 100%;
+      padding: 0.55rem 0.7rem;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 6px;
+      color: inherit;
+      font-size: 1rem;
+      font-family: inherit;
+    }
+    body.fog .shell input {
+      background: rgba(255,255,255,0.16);
+      border-color: rgba(255,255,255,0.24);
+    }
+    .shell input:focus {
+      outline: 2px solid rgba(255,255,255,0.55);
+      outline-offset: 1px;
+    }
+    .shell label {
+      display: block;
+      font-size: 0.9rem;
+      margin-bottom: 0.3rem;
+      color: var(--fg-muted);
+    }
+    .shell h1 {
+      margin: 0 0 0.8rem 0;
+      font-size: 1.55rem;
+      font-weight: 650;
+      letter-spacing: 0.01em;
+    }
+    .shell p {
+      margin: 0.7rem 0;
+      line-height: 1.5;
+      color: var(--fg-muted);
+    }
+    .shell code {
+      background: rgba(0,0,0,0.25);
+      padding: 0.05rem 0.35rem;
+      border-radius: 4px;
+      font-size: 0.9em;
+    }
+    /* .primary — matches the worker's muted-dark claim button
+       (anarchy-worker.js §.primary / .btn-claim). Full-width inside the
+       shell, rounded but not pill. */
+    button.primary {
+      width: 100%;
+      display: block;
+      padding: 0.65rem 1rem;
+      border-radius: 10px;
+      border: 1px solid #475569;
+      background: #334155;
+      color: #f1f5f9;
+      font-weight: 600;
+      font-size: 0.95rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    }
+    button.primary:hover:not(:disabled) {
+      background: #60a5fa;
+      border-color: #93c5fd;
+      color: #0b1120;
+    }
+    button.primary:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+    button.danger {
+      padding: 0.35rem 0.75rem;
+      border: none;
+      border-radius: 6px;
+      background: linear-gradient(135deg, #ff3e5f, #ff7b8e);
+      color: white;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: filter 0.15s;
+    }
+    button.danger:hover { filter: brightness(1.08); }
+    .hint {
+      font-size: 0.85rem;
+      color: var(--fg-muted);
+    }
+    .handle-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .handle-wrapper input { flex: 1; }
+    .handle-suffix {
+      font-size: 0.95rem;
+      color: var(--fg-muted);
+    }
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 1.5rem;
+      font-size: 0.85rem;
+    }
+    .footer a {
+      color: rgba(255,255,255,0.75);
+      text-decoration: none;
+    }
+    .footer a:hover { text-decoration: underline; }
+    /* Rainbow "?" anchor with a radial glow and "Lore…" tooltip —
+       matches the worker's .footer-left styling (anarchy-worker.js). No
+       circle, no border — the glow + gradient-text are the only chrome. */
+    .footer-left {
+      position: relative;
+      display: inline-block;
+      font-weight: 700;
+      text-decoration: none;
+      color: transparent;
+      background: linear-gradient(
+        120deg,
+        #f97316,
+        #facc15,
+        #22c55e,
+        #0ea5e9,
+        #8b5cf6,
+        #ec4899
+      );
+      -webkit-background-clip: text;
+      background-clip: text;
+      text-shadow:
+        0 0 6px rgba(0, 0, 0, 0.65),
+        0 0 12px rgba(0, 0, 0, 0.85);
+    }
+    .footer-left:hover { text-decoration: none; }
+    .footer-left::before {
+      content: "";
+      position: absolute;
+      inset: -0.25rem -0.35rem;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(255,255,255,0.85), transparent 70%);
+      opacity: 0.8;
+      filter: blur(4px);
+      z-index: -1;
+      pointer-events: none;
+    }
+    .footer-left::after {
+      content: "Lore…";
+      position: absolute;
+      left: 50%;
+      bottom: 130%;
+      transform: translateX(-50%) translateY(4px);
+      padding: 0.25rem 0.5rem;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.95);
+      color: #e5e7eb;
+      font-size: 0.7rem;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.8);
+      transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+    }
+    .footer-left:hover::after {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* Dice — the exact §6 spec: naked glyph, top-left of shell header,
+       16px, opacity 0.75 → 0.85 on hover, default cursor, no chrome. */
+    .dice {
+      position: absolute;
+      top: 50%;
+      left: 6px;
+      transform: translateY(-50%);
+      font-size: 16px;
+      color: rgba(255,255,255,0.92);
+      background: none;
+      border: none;
+      padding: 0;
+      margin: 0;
+      line-height: 1;
+      opacity: 0.75;
+      cursor: default !important;
+      transition: opacity 0.15s ease;
+    }
+    .dice:hover { opacity: 0.85; }
+    .dice:focus { outline: none; }
+    .dice:focus-visible {
+      outline: 1px solid white;
+      outline-offset: 2px;
+    }
+
+    /* Sigil + corner-badge: fixed-position, non-interactive overlay. */
+    .sigil,
+    .corner-badge {
+      position: fixed;
+      pointer-events: none;
+      z-index: 0;
+      text-shadow: 0 4px 8px rgba(0,0,0,0.5), 0 0 18px rgba(0,0,0,0.4);
+    }
+
+    .secret-key-box {
+      background: rgba(0,0,0,0.4);
+      border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-top: 1rem;
+    }
+    .secret-key-label {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--fg-muted);
+      margin-bottom: 0.4rem;
+    }
+    .secret-key-value code {
+      display: inline-block;
+      font-size: 1.1rem;
+      padding: 0.4rem 0.6rem;
+      word-break: break-all;
+      cursor: pointer;
+    }
+    .master-key-highlight {
+      margin-top: 0.8rem;
+      font-size: 0.85rem;
+    }
+    .handle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+    }
+    .handle-row:last-child { border-bottom: none; }
+    .status {
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      color: var(--fg-muted);
+    }
+    .is-hidden { display: none; }
+
+    {% block extra_css %}{% endblock %}
+  </style>
+</head>
+<body class="{% if theme.bright %}fog{% endif %}" data-theme="{{ theme.name }}">
+  {% if deco.is_sigil %}
+    <div class="sigil" style="{{ deco.placement_css }} color:{{ deco.color }};font-size:{{ deco.size_px }}px;font-weight:{{ deco.weight }};opacity:{{ deco.opacity }};">{{ deco.character }}</div>
+  {% else if deco.is_badge %}
+    <div class="corner-badge" data-corner="{{ deco.badge_corner }}" style="{{ deco.badge_corner_css }} width:60px;height:60px;">
+      <svg viewBox="0 0 100 100" width="60" height="60" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="50" cy="50" r="24" fill="none" stroke="#7a00ac" stroke-width="10"/>
+      </svg>
+    </div>
+  {% endif %}
+
+  <main class="shell">
+    <button class="dice" id="dice" type="button" aria-label="shuffle theme">🎲</button>
+    {% block content %}{% endblock %}
+  </main>
+
+  <script>
+    // Dice reroll. Fetches the full theme catalog once and swaps the
+    // live background/sigil/fog on click. Strict single source of truth:
+    // the JS mirrors the server's `DecorationView` rendering logic so
+    // nothing drifts between first paint and reroll.
+    (async () => {
+      const dice = document.getElementById('dice');
+      if (!dice) return;
+      let themes = [];
+      try {
+        const res = await fetch('/themes');
+        if (res.ok) themes = await res.json();
+      } catch (_) { return; }
+      dice.addEventListener('click', () => {
+        if (themes.length < 2) return;
+        const current = document.body.dataset.theme;
+        const pool = themes.filter(t => t.name !== current);
+        const next = pool[Math.floor(Math.random() * pool.length)];
+        apply(next);
+      });
+
+      function apply(t) {
+        document.body.style.background = t.background;
+        document.body.classList.toggle('fog', !!t.bright);
+        document.body.dataset.theme = t.name;
+        document.querySelectorAll('.sigil, .corner-badge').forEach(n => n.remove());
+        const node = buildDecoration(t.decoration);
+        if (node) document.body.insertBefore(node, document.body.firstChild);
+      }
+
+      function buildDecoration(d) {
+        if (d.type === 'sigil') {
+          const s = document.createElement('div');
+          s.className = 'sigil';
+          s.textContent = d.character;
+          s.setAttribute('style', placementCss(d.placement) +
+            'color:' + d.color + ';' +
+            'font-size:' + d.size_px + 'px;' +
+            'font-weight:' + d.weight + ';' +
+            'opacity:' + d.opacity + ';');
+          return s;
+        }
+        if (d.type === 'corner-badge') {
+          const corners = ['top-left','top-right','bottom-left','bottom-right'];
+          const corner = d.random_corner
+            ? corners[Math.floor(Math.random()*4)]
+            : 'bottom-right';
+          const wrap = document.createElement('div');
+          wrap.className = 'corner-badge';
+          wrap.dataset.corner = corner;
+          wrap.setAttribute('style', cornerCss(corner) + 'width:60px;height:60px;');
+          wrap.innerHTML =
+            '<svg viewBox="0 0 100 100" width="60" height="60" xmlns="http://www.w3.org/2000/svg">' +
+              '<circle cx="50" cy="50" r="24" fill="none" stroke="#7a00ac" stroke-width="10"/>' +
+            '</svg>';
+          return wrap;
+        }
+        return null;
+      }
+
+      function placementCss(p) {
+        return {
+          'bottom-right': 'bottom:2rem;right:2rem;',
+          'top-left':     'top:2rem;left:2rem;',
+          'top-right':    'top:2rem;right:2rem;',
+          'bottom-left':  'bottom:2rem;left:2rem;',
+        }[p] || 'bottom:2rem;right:2rem;';
+      }
+      function cornerCss(c) {
+        return {
+          'top-left':     'top:2rem;left:2rem;',
+          'top-right':    'top:2rem;right:2rem;',
+          'bottom-left':  'bottom:2rem;left:2rem;',
+          'bottom-right': 'bottom:2rem;right:2rem;',
+        }[c] || 'bottom:2rem;right:2rem;';
+      }
+    })();
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

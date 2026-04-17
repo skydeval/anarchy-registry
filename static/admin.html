@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <!--
+    These two values are substituted server-side by the console handler
+    in src/handlers/admin.rs before the page is returned. Both come
+    from an authenticated session; if you're viewing raw placeholders,
+    the file was served directly instead of through the handler.
+  -->
+  <meta name="csrf-token" content="{{CSRF_TOKEN}}">
+  <meta name="admin-path" content="{{ADMIN_PATH}}">
+  <title>anarchy.lgbt registry admin</title>
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --panel: #0f0f0f;
+      --fg: #e0e0e0;
+      --muted: #888;
+      --border: #2a2a2a;
+      --accent: #4a9eff;
+      --danger: #e05050;
+    }
+    * { box-sizing: border-box; }
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 1rem 2rem 3rem 2rem;
+      line-height: 1.4;
+      font-size: 14px;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.8rem;
+      margin-bottom: 1rem;
+    }
+    h1 { font-size: 1.1rem; margin: 0; font-weight: 600; }
+    h2 {
+      font-size: 0.85rem;
+      margin: 1.8rem 0 0.6rem 0;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+    h3 { font-size: 0.9rem; margin: 0.6rem 0 0.3rem 0; font-weight: 600; }
+    button {
+      background: #1a1a1a;
+      color: var(--fg);
+      border: 1px solid var(--border);
+      padding: 0.35rem 0.7rem;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-family: inherit;
+    }
+    button:hover { background: #242424; }
+    button.danger { color: var(--danger); border-color: #4a2020; }
+    button.danger:hover { background: #2a1515; }
+    input[type=text], input[type=password] {
+      background: #111;
+      color: var(--fg);
+      border: 1px solid var(--border);
+      padding: 0.35rem 0.6rem;
+      border-radius: 3px;
+      font-size: 0.85rem;
+      font-family: inherit;
+    }
+    input[type=file] { font-size: 0.8rem; color: var(--muted); }
+    table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; font-size: 0.85rem; }
+    th, td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { color: var(--muted); font-weight: 500; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.88em;
+      color: var(--fg);
+    }
+    .muted { color: var(--muted); }
+    .status {
+      font-size: 0.8rem;
+      color: var(--muted);
+      min-height: 1.2em;
+      margin-top: 0.3rem;
+    }
+    .metrics-strip {
+      display: flex;
+      gap: 2rem;
+      flex-wrap: wrap;
+      font-size: 0.9rem;
+    }
+    .metrics-strip .label {
+      color: var(--muted);
+      margin-right: 0.4rem;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.06em;
+    }
+    .inline-form {
+      display: flex;
+      gap: 0.4rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .inline-form input { flex: 1; min-width: 140px; }
+
+    .handle-chip {
+      display: inline-flex;
+      gap: 0.3rem;
+      align-items: center;
+      margin: 0.1rem 0.25rem 0.1rem 0;
+    }
+
+    .policy-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+    .policy-section {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.8rem;
+    }
+    .policy-section ul {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 0.5rem 0;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+    .policy-section li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.25rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.85rem;
+    }
+    .policy-section li:last-child { border-bottom: none; }
+    .policy-section li button {
+      padding: 0.1rem 0.4rem;
+      font-size: 0.8rem;
+      opacity: 0.7;
+    }
+    .policy-section li button:hover { opacity: 1; }
+    .policy-section input { width: 100%; margin-bottom: 0.3rem; }
+    .policy-section .buttons {
+      display: flex;
+      gap: 0.4rem;
+      margin-top: 0.3rem;
+    }
+
+    .tool { margin-bottom: 1.2rem; }
+
+    #activity-body {
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.4rem 0.8rem;
+    }
+    .activity-row {
+      display: flex;
+      gap: 0.8rem;
+      padding: 0.25rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.82rem;
+    }
+    .activity-row:last-child { border-bottom: none; }
+    .activity-row.blocked .evt { color: var(--danger); }
+    .activity-row .ts {
+      color: var(--muted);
+      font-family: ui-monospace, monospace;
+      font-size: 0.75rem;
+      flex-shrink: 0;
+      width: 13rem;
+    }
+    .activity-row .evt {
+      color: var(--accent);
+      flex-shrink: 0;
+      width: 13rem;
+    }
+
+    .io-controls {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .io-group {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.7rem 0.9rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      min-width: 240px;
+    }
+    .io-group strong { font-size: 0.85rem; }
+
+    .danger-zone {
+      background: #190909;
+      border: 1px solid #3a1515;
+      border-radius: 4px;
+      padding: 0.9rem;
+      margin-top: 1rem;
+    }
+    .danger-zone h2 { color: #c07070; margin-top: 0; }
+    .danger-zone h3 { color: #c07070; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>anarchy.lgbt registry admin</h1>
+    <button onclick="logout()">Logout</button>
+  </header>
+
+  <section>
+    <h2>Metrics</h2>
+    <div class="metrics-strip">
+      <div><span class="label">Registrations / 1h</span><span id="m-1h">—</span></div>
+      <div><span class="label">Registrations / 24h</span><span id="m-24h">—</span></div>
+      <div><span class="label">Top PDS</span><span id="m-pds">—</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Registry</h2>
+    <div class="status" id="registry-status">Loading registry…</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 40%;">DID</th>
+          <th>Handles</th>
+          <th style="width: 8rem;"></th>
+        </tr>
+      </thead>
+      <tbody id="registry-body"></tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Tools</h2>
+    <div class="tool">
+      <h3>Resolve handle → DID</h3>
+      <div class="inline-form">
+        <input id="resolve-input" placeholder="someone.bsky.social">
+        <button onclick="resolveHandle()">Resolve</button>
+      </div>
+      <div class="status" id="resolve-status"></div>
+    </div>
+    <div class="tool">
+      <h3>Assign handle to DID</h3>
+      <div class="inline-form">
+        <input id="assign-did" placeholder="did:plc:example">
+        <input id="assign-sub" placeholder="reserved-sub">
+        <button onclick="assignHandle()">Assign</button>
+      </div>
+      <div class="status" id="assign-status"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Policy</h2>
+    <div class="policy-grid">
+      <div class="policy-section" data-list="vip_dids">
+        <h3>VIP DIDs</h3>
+        <ul data-role="list"></ul>
+        <input data-role="value" placeholder="did:plc:examplevip">
+        <input data-role="note" placeholder="note (optional)">
+        <div class="buttons">
+          <button data-action="add">Add</button>
+        </div>
+        <div class="status" data-role="status"></div>
+      </div>
+      <div class="policy-section" data-list="blocked_dids">
+        <h3>Blocked DIDs</h3>
+        <ul data-role="list"></ul>
+        <input data-role="value" placeholder="did:plc:blockme">
+        <input data-role="note" placeholder="note (optional)">
+        <div class="buttons">
+          <button data-action="add">Add</button>
+        </div>
+        <div class="status" data-role="status"></div>
+      </div>
+      <div class="policy-section" data-list="blocked_pds">
+        <h3>Blocked PDS hosts</h3>
+        <ul data-role="list"></ul>
+        <input data-role="value" placeholder="pds.example.com">
+        <input data-role="note" placeholder="note (optional)">
+        <div class="buttons">
+          <button data-action="add">Add</button>
+        </div>
+        <div class="status" data-role="status"></div>
+      </div>
+      <div class="policy-section" data-list="blocked_keywords">
+        <h3>Blocked keywords</h3>
+        <ul data-role="list"></ul>
+        <input data-role="value" placeholder="substring">
+        <input data-role="note" placeholder="note (optional)">
+        <div class="buttons">
+          <button data-action="add">Add</button>
+          <button data-action="preview">Preview matches</button>
+        </div>
+        <div class="status" data-role="status"></div>
+      </div>
+      <div class="policy-section" data-list="reserved_handles">
+        <h3>Reserved handles</h3>
+        <ul data-role="list"></ul>
+        <input data-role="value" placeholder="goddess">
+        <input data-role="note" placeholder="note (optional)">
+        <div class="buttons">
+          <button data-action="add">Add</button>
+        </div>
+        <div class="status" data-role="status"></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Activity log</h2>
+    <div class="status" id="activity-status">Loading…</div>
+    <div id="activity-body"></div>
+  </section>
+
+  <section>
+    <h2>Import / Export</h2>
+    <div class="io-controls">
+      <div class="io-group">
+        <strong>Config</strong>
+        <button onclick="exportConfig()">Export</button>
+        <input type="file" id="import-config-file" accept=".json,application/json">
+        <button onclick="importConfig()">Import (replaces current)</button>
+        <div class="status" id="io-config-status"></div>
+      </div>
+      <div class="io-group">
+        <strong>Registry</strong>
+        <button onclick="exportRegistry('json')">Export (JSON)</button>
+        <button onclick="exportRegistry('csv')">Export (CSV)</button>
+        <input type="file" id="import-registry-file" accept=".json,application/json">
+        <button onclick="importRegistry()">Import (replaces current)</button>
+        <div class="status" id="io-registry-status"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="danger-zone">
+    <h2>Danger zone</h2>
+    <h3>Delete all handles for a DID</h3>
+    <div class="inline-form">
+      <input id="danger-did" placeholder="did:plc:…">
+      <button class="danger" onclick="deleteDidByInput()">Delete all</button>
+    </div>
+    <div class="status" id="danger-status"></div>
+  </section>
+
+  <script>
+    // ==================================================================
+    // setup
+    // ==================================================================
+    const ADMIN = document.querySelector('meta[name="admin-path"]').content;
+    const CSRF = document.querySelector('meta[name="csrf-token"]').content;
+
+    async function apiGet(path) {
+      return fetch(ADMIN + path, { credentials: 'same-origin' });
+    }
+
+    async function apiPost(path, body) {
+      return fetch(ADMIN + path, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'content-type': 'application/json',
+          'x-csrf-token': CSRF,
+        },
+        body: JSON.stringify(body || {}),
+      });
+    }
+
+    function setStatus(target, text) {
+      const el = typeof target === 'string' ? document.getElementById(target) : target;
+      if (el) el.textContent = text;
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, ch => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+      }[ch]));
+    }
+
+    // ==================================================================
+    // logout
+    // ==================================================================
+    async function logout() {
+      await apiGet('/logout');
+      location.reload();
+    }
+
+    // ==================================================================
+    // metrics
+    // ==================================================================
+    async function loadMetrics() {
+      const res = await apiGet('/metrics');
+      if (!res.ok) return;
+      const m = await res.json();
+      document.getElementById('m-1h').textContent = m.registrations_1h;
+      document.getElementById('m-24h').textContent = m.registrations_24h;
+      const pds = (m.top_pds_hosts || [])
+        .slice(0, 5)
+        .map(p => p.host + ' (' + p.count + ')')
+        .join(', ');
+      document.getElementById('m-pds').textContent = pds || '—';
+    }
+
+    // ==================================================================
+    // registry
+    // ==================================================================
+    async function loadRegistry() {
+      setStatus('registry-status', 'Loading registry…');
+      const res = await apiGet('/dids');
+      if (!res.ok) {
+        setStatus('registry-status', 'Failed to load registry. HTTP ' + res.status);
+        return;
+      }
+      const data = await res.json();
+      const tbody = document.getElementById('registry-body');
+      tbody.innerHTML = '';
+      for (const row of (data.dids || [])) {
+        const tr = document.createElement('tr');
+
+        const tdDid = document.createElement('td');
+        tdDid.innerHTML = '<code>' + escapeHtml(row.did) + '</code>';
+
+        const tdHandles = document.createElement('td');
+        for (const h of (row.handles || [])) {
+          const chip = document.createElement('span');
+          chip.className = 'handle-chip';
+          const code = document.createElement('code');
+          code.textContent = h.sub;
+          const btn = document.createElement('button');
+          btn.className = 'danger';
+          btn.textContent = 'Delete';
+          btn.onclick = () => deleteHandle(row.did, h.sub);
+          chip.appendChild(code);
+          chip.appendChild(btn);
+          tdHandles.appendChild(chip);
+        }
+
+        const tdAct = document.createElement('td');
+        const delAllBtn = document.createElement('button');
+        delAllBtn.className = 'danger';
+        delAllBtn.textContent = 'Delete DID';
+        delAllBtn.onclick = () => deleteDid(row.did);
+        tdAct.appendChild(delAllBtn);
+
+        tr.appendChild(tdDid);
+        tr.appendChild(tdHandles);
+        tr.appendChild(tdAct);
+        tbody.appendChild(tr);
+      }
+      setStatus('registry-status', 'Total DIDs: ' + (data.dids || []).length);
+    }
+
+    async function deleteHandle(did, sub) {
+      if (!confirm('Delete ' + sub + ' from ' + did + ' ?')) return;
+      const res = await apiPost('/delete-handle', { did, sub });
+      if (res.ok) loadRegistry();
+      else alert('Failed to delete handle. HTTP ' + res.status);
+    }
+
+    async function deleteDid(did) {
+      if (!confirm('Delete ALL handles for ' + did + ' ?\n\nThis cannot be undone.')) return;
+      const res = await apiPost('/delete-did', { did });
+      if (res.ok) loadRegistry();
+      else alert('Failed to delete DID. HTTP ' + res.status);
+    }
+
+    async function deleteDidByInput() {
+      const did = document.getElementById('danger-did').value.trim();
+      if (!did) {
+        setStatus('danger-status', 'Enter a DID first.');
+        return;
+      }
+      if (!confirm('Delete ALL handles for ' + did + ' ?\n\nThis cannot be undone.')) return;
+      setStatus('danger-status', 'Deleting…');
+      const res = await apiPost('/delete-did', { did });
+      if (res.ok) {
+        setStatus('danger-status', 'Deleted.');
+        document.getElementById('danger-did').value = '';
+        loadRegistry();
+      } else {
+        setStatus('danger-status', 'Failed. HTTP ' + res.status);
+      }
+    }
+
+    // ==================================================================
+    // tools: resolve + assign
+    // ==================================================================
+    async function resolveHandle() {
+      const handle = document.getElementById('resolve-input').value.trim();
+      if (!handle) {
+        setStatus('resolve-status', 'Please enter a handle.');
+        return;
+      }
+      setStatus('resolve-status', 'Resolving…');
+      const res = await apiPost('/resolve', { handle });
+      if (!res.ok) {
+        setStatus('resolve-status', 'Network error.');
+        return;
+      }
+      const data = await res.json();
+      if (!data.did) {
+        setStatus('resolve-status', 'Could not resolve DID for this handle.');
+      } else {
+        setStatus('resolve-status', 'Resolved: ' + data.did);
+      }
+    }
+
+    async function assignHandle() {
+      const did = document.getElementById('assign-did').value.trim();
+      const sub = document.getElementById('assign-sub').value.trim();
+      if (!did || !sub) {
+        setStatus('assign-status', 'Enter both a DID and a handle.');
+        return;
+      }
+      setStatus('assign-status', 'Assigning…');
+      const res = await apiPost('/assign-handle', { did, sub });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setStatus('assign-status', data.error || ('Assign failed. HTTP ' + res.status));
+        return;
+      }
+      const data = await res.json();
+      const msg = data.secret_key
+        ? 'Assigned. New DID created. Secret key: ' + data.secret_key
+        : 'Assigned to existing DID.';
+      setStatus('assign-status', msg);
+      document.getElementById('assign-sub').value = '';
+      loadRegistry();
+    }
+
+    // ==================================================================
+    // policy
+    // ==================================================================
+    const ADD_ACTION = {
+      'vip_dids':         'addVipDid',
+      'blocked_dids':     'addBlockDid',
+      'blocked_pds':      'addBlockPds',
+      'blocked_keywords': 'addBlockKeyword',
+      'reserved_handles': 'addReserved',
+    };
+    const REMOVE_ACTION = {
+      'vip_dids':         'removeVipDid',
+      'blocked_dids':     'removeBlockDid',
+      'blocked_pds':      'removeBlockPds',
+      'blocked_keywords': 'removeBlockKeyword',
+      'reserved_handles': 'removeReserved',
+    };
+
+    async function loadPolicy() {
+      const res = await apiGet('/config');
+      if (!res.ok) return;
+      const cfg = await res.json();
+      for (const key of Object.keys(ADD_ACTION)) {
+        renderList(key, cfg[key] || []);
+      }
+    }
+
+    function renderList(key, entries) {
+      const section = document.querySelector('[data-list="' + key + '"]');
+      if (!section) return;
+      const ul = section.querySelector('[data-role="list"]');
+      ul.innerHTML = '';
+      for (const entry of entries) {
+        const li = document.createElement('li');
+        const span = document.createElement('span');
+        span.innerHTML =
+          '<code>' + escapeHtml(entry.value) + '</code>' +
+          (entry.note ? ' <span class="muted">— ' + escapeHtml(entry.note) + '</span>' : '');
+        const btn = document.createElement('button');
+        btn.textContent = '×';
+        btn.title = 'Remove';
+        btn.onclick = () => removeFromList(key, entry.value);
+        li.appendChild(span);
+        li.appendChild(btn);
+        ul.appendChild(li);
+      }
+    }
+
+    document.querySelectorAll('.policy-section [data-action="add"]').forEach(btn => {
+      btn.onclick = () => {
+        const section = btn.closest('.policy-section');
+        const key = section.dataset.list;
+        const value = section.querySelector('[data-role="value"]').value.trim();
+        const noteRaw = section.querySelector('[data-role="note"]').value.trim();
+        const note = noteRaw ? noteRaw : null;
+        if (!value) return;
+        addToList(key, value, note, section);
+      };
+    });
+
+    document.querySelectorAll('.policy-section [data-action="preview"]').forEach(btn => {
+      btn.onclick = async () => {
+        const section = btn.closest('.policy-section');
+        const keyword = section.querySelector('[data-role="value"]').value.trim();
+        if (!keyword) return;
+        const status = section.querySelector('[data-role="status"]');
+        setStatus(status, 'Previewing…');
+        const res = await apiPost('/preview-keyword', { keyword });
+        if (!res.ok) {
+          setStatus(status, 'Preview failed.');
+          return;
+        }
+        const data = await res.json();
+        const head = 'Would block ' + data.count + ' existing handle(s)';
+        const sample = data.count > 0
+          ? ': ' + data.matches.slice(0, 10).join(', ') + (data.count > 10 ? '…' : '')
+          : '';
+        setStatus(status, head + sample);
+      };
+    });
+
+    async function addToList(key, value, note, section) {
+      const status = section.querySelector('[data-role="status"]');
+      setStatus(status, 'Adding…');
+      const res = await apiPost('/config', { action: ADD_ACTION[key], value, note });
+      if (!res.ok) {
+        setStatus(status, 'Failed. HTTP ' + res.status);
+        return;
+      }
+      setStatus(status, 'Added.');
+      section.querySelector('[data-role="value"]').value = '';
+      section.querySelector('[data-role="note"]').value = '';
+      loadPolicy();
+    }
+
+    async function removeFromList(key, value) {
+      if (!confirm('Remove ' + value + ' from ' + key.replace(/_/g, ' ') + '?')) return;
+      const res = await apiPost('/config', { action: REMOVE_ACTION[key], value });
+      if (res.ok) loadPolicy();
+    }
+
+    // ==================================================================
+    // activity log
+    // ==================================================================
+    async function loadActivity() {
+      setStatus('activity-status', 'Loading…');
+      const res = await apiGet('/activity');
+      if (!res.ok) {
+        setStatus('activity-status', 'Failed to load. HTTP ' + res.status);
+        return;
+      }
+      const data = await res.json();
+      const body = document.getElementById('activity-body');
+      body.innerHTML = '';
+      const events = data.events || [];
+      for (const evt of events) {
+        const row = document.createElement('div');
+        row.className = 'activity-row' +
+          (evt.event_type.startsWith('register_blocked') ? ' blocked' : '');
+        const parts = [];
+        if (evt.did) parts.push('did=' + evt.did);
+        if (evt.sub) parts.push('sub=' + evt.sub);
+        if (evt.pds_host) parts.push('pds=' + evt.pds_host);
+        row.innerHTML =
+          '<span class="ts">' + escapeHtml(evt.ts) + '</span>' +
+          '<span class="evt">' + escapeHtml(evt.event_type) + '</span>' +
+          '<span>' + escapeHtml(parts.join(' ')) + '</span>';
+        body.appendChild(row);
+      }
+      setStatus('activity-status', events.length + ' event(s)');
+    }
+
+    // ==================================================================
+    // import / export
+    // ==================================================================
+    function exportConfig() {
+      window.location = ADMIN + '/export-config';
+    }
+
+    function exportRegistry(fmt) {
+      window.location = ADMIN + '/export-registry?format=' + fmt;
+    }
+
+    async function importConfig() {
+      const input = document.getElementById('import-config-file');
+      const file = input.files[0];
+      if (!file) {
+        setStatus('io-config-status', 'Choose a config JSON file first.');
+        return;
+      }
+      let text;
+      try { text = await file.text(); }
+      catch (_) { setStatus('io-config-status', 'Could not read file.'); return; }
+      let payload;
+      try { payload = JSON.parse(text); }
+      catch (_) { setStatus('io-config-status', 'File is not valid JSON.'); return; }
+      setStatus('io-config-status', 'Uploading config…');
+      const res = await apiPost('/import-config', payload);
+      if (res.ok) {
+        setStatus('io-config-status', 'Config imported. Refreshing…');
+        loadPolicy();
+      } else {
+        setStatus('io-config-status', 'Config import failed. HTTP ' + res.status);
+      }
+    }
+
+    async function importRegistry() {
+      const input = document.getElementById('import-registry-file');
+      const file = input.files[0];
+      if (!file) {
+        setStatus('io-registry-status', 'Choose a registry JSON file first.');
+        return;
+      }
+      let text;
+      try { text = await file.text(); }
+      catch (_) { setStatus('io-registry-status', 'Could not read file.'); return; }
+      let payload;
+      try { payload = JSON.parse(text); }
+      catch (_) { setStatus('io-registry-status', 'File is not valid JSON.'); return; }
+      if (!confirm('This will REPLACE the entire registry. Continue?')) return;
+      setStatus('io-registry-status', 'Uploading registry… (this will replace current registry)');
+      const res = await apiPost('/import-registry', payload);
+      if (res.ok) {
+        setStatus('io-registry-status', 'Registry imported.');
+        loadRegistry();
+      } else {
+        setStatus('io-registry-status', 'Registry import failed. HTTP ' + res.status);
+      }
+    }
+
+    // ==================================================================
+    // boot
+    // ==================================================================
+    loadMetrics();
+    loadRegistry();
+    loadPolicy();
+    loadActivity();
+  </script>
+</body>
+</html>

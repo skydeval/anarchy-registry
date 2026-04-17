@@ -1,0 +1,24 @@
+# Rust build artifacts
+/target
+**/*.rs.bk
+
+# Secrets (§4.4, §8) — never in git.
+.env
+.env.local
+.env.*.local
+
+# Runtime state (§3/§8) — the sqlite DB, WAL/SHM sidecars, and local
+# backups. These are operator-managed on the portfolio box.
+/data
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+/backups
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db

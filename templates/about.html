@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}About {{ base_domain }}{% endblock %}
+
+{% block content %}
+<h1>About this project</h1>
+
+<p>
+  {{ base_domain }} is a small, independent identity side-domain built for
+  people who want a little more control over how their Bluesky handle
+  looks. It isn't a platform or a service. It's a tool: you pick a
+  subdomain, it maps to your DID, and you control it yourself with a
+  secret key.
+</p>
+
+<p>
+  There's no account system, no recovery process, and no personal data
+  stored. The system keeps a hash of your secret key, not the key
+  itself. If it's lost, there isn't a reset mechanism by design. The
+  goal is to stay simple, privacy-respecting, and self-governing.
+</p>
+
+<p>
+  The backgrounds rotate through a collection of pride and awareness
+  flags. Partly because they're beautiful, partly because the
+  communities behind those flags are usually the ones exploring
+  independent identity tech long before it becomes mainstream. The
+  themes don't track anything and don't imply anything about whoever's
+  visiting. They're just meant to make the space feel welcoming and
+  unmistakably not corporate.
+</p>
+
+<p>
+  There's no support inbox and no formal downtime guarantees. If
+  something breaks, it's usually fixed quickly, but the intent is for
+  the system to run mostly on its own without needing anyone to
+  intervene.
+</p>
+
+<p>
+  If you're using this: glad it's useful. That's the whole story.
+</p>
+
+<div class="footer">
+  <span></span>
+  <a href="/">← Return to the main page</a>
+</div>
+{% endblock %}

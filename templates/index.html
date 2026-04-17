@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}Seize your {{ base_domain }} handle{% endblock %}
+
+{% block content %}
+<h1>Seize your {{ base_domain }} bsky handle</h1>
+<p class="hint">
+  1. Enter your current Bluesky handle.<br>
+  2. Pick a handle under {{ base_domain }}.<br>
+  3. Save your secret key somewhere safe.
+</p>
+
+<form id="claimForm" autocomplete="off" novalidate>
+  <div>
+    <label for="currentHandle">Your current Bluesky handle:</label>
+    <input id="currentHandle" name="currentHandle" type="text" placeholder="you.bsky.social" required>
+  </div>
+
+  <div style="margin-top:0.9rem;">
+    <label for="desiredSubdomain">Handle you want:</label>
+    <div class="handle-wrapper">
+      <input id="desiredSubdomain" name="desiredSubdomain" type="text" placeholder="riotgrrrl" required>
+      <span class="handle-suffix">.{{ base_domain }}</span>
+    </div>
+    <div class="hint" style="margin-top:0.35rem;">
+      Your final handle will look like
+      <code id="finalHandlePreview">riotgrrrl.{{ base_domain }}</code>
+    </div>
+  </div>
+
+  <button type="submit" class="primary" style="margin-top:1rem;">Claim this handle</button>
+  <div id="secretKeyContainer" class="is-hidden" style="margin-top:0.5rem;"></div>
+</form>
+
+<p id="secretKeyNote" class="hint is-hidden" style="margin-top:1.75rem;">
+  We store only a hash of your secret key. If you lose the key, we can't
+  recover it for you. That's the tradeoff for control.
+</p>
+<div id="claimStatus" class="status" style="margin-top:0.5rem;"></div>
+
+<div class="footer">
+  <a href="/a" class="footer-left" aria-label="About this project">?</a>
+  <a href="/m">Manage / Delete handles</a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const baseDomain = {{ base_domain_json|safe }};
+  const form = document.getElementById('claimForm');
+  const statusEl = document.getElementById('claimStatus');
+  const keyEl = document.getElementById('secretKeyContainer');
+  const keyNoteEl = document.getElementById('secretKeyNote');
+  const preview = document.getElementById('finalHandlePreview');
+  const subInput = document.getElementById('desiredSubdomain');
+
+  subInput.addEventListener('input', () => {
+    const v = subInput.value.trim().toLowerCase() || 'riotgrrrl';
+    preview.textContent = v + '.' + baseDomain;
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    statusEl.textContent = '';
+    keyEl.classList.add('is-hidden');
+    keyEl.innerHTML = '';
+    keyNoteEl.classList.add('is-hidden');
+
+    const body = {
+      handle: form.currentHandle.value,
+      subdomain: form.desiredSubdomain.value,
+    };
+
+    let res;
+    try {
+      res = await fetch('/register', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    } catch (_) {
+      statusEl.textContent = 'Network error. Try again in a moment.';
+      return;
+    }
+
+    let data = {};
+    try { data = await res.json(); } catch (_) {}
+
+    if (!res.ok) {
+      statusEl.textContent = data.error || 'Could not register this handle.';
+      return;
+    }
+
+    statusEl.innerHTML =
+      '<p>Your handle\u2019s good to go. To use it on Bluesky, open the handle section in your account settings. ' +
+      'Pick <strong>I have my own domain</strong>, jump to the <strong>No DNS Panel</strong> tab, ' +
+      'paste in your new handle, hit <strong>Verify</strong>, then <strong>Update Handle</strong>. Easy.</p>';
+
+    if (data.secret_key) {
+      keyEl.classList.remove('is-hidden');
+      keyEl.innerHTML =
+        '<div class="secret-key-box">' +
+          '<div class="secret-key-label">Your secret key</div>' +
+          '<div class="secret-key-value">' +
+            '<p class="hint">Click the key to copy:</p>' +
+            '<code id="skv" title="Click to copy">' + data.secret_key + '</code>' +
+          '</div>' +
+          '<p class="master-key-highlight">' +
+            'Treat this like a master key for your DID at this website. ' +
+            'It\u2019s the ONLY way to manage or delete handles on ' +
+            '<strong>' + baseDomain + '</strong>, and there\u2019s no recovery if it\u2019s lost.' +
+          '</p>' +
+        '</div>';
+      keyNoteEl.classList.remove('is-hidden');
+      const skv = document.getElementById('skv');
+      skv.addEventListener('click', () => {
+        navigator.clipboard.writeText(data.secret_key).catch(() => {});
+        skv.textContent = data.secret_key + '  ✓';
+        setTimeout(() => { skv.textContent = data.secret_key; }, 1200);
+      });
+    }
+  });
+</script>
+{% endblock %}
