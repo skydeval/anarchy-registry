@@ -1,0 +1,14 @@
+{# Themed login page for the admin surface. Deliberately bare: just a
+   password field and a submit button. No heading, no labels, no hint
+   about what this page is. Wrong passwords re-render the same page
+   silently — see handlers/admin.rs. #}
+{% extends "base.html" %}
+
+{% block title %}{{ base_domain }}{% endblock %}
+
+{% block content %}
+<form method="post" action="{{ admin_path }}" autocomplete="off">
+  <input type="password" name="password" autocomplete="off" autofocus>
+  <button type="submit" class="primary" style="margin-top:0.8rem;">→</button>
+</form>
+{% endblock %}

@@ -1,19 +1,30 @@
 //! Admin HTTP surface (DESIGN.md §4.4, §5).
 //!
-//! The non-enumeration rule is load-bearing here: **every** unauthenticated
-//! request to `{ADMIN_PATH}/*` collapses to a `404 not found`, including
-//! wrong-password logins, rate-limited login attempts, and missing-CSRF
-//! POSTs. From a scanner's perspective the admin surface is
-//! indistinguishable from a missing path.
+//! Routing shape:
 //!
-//! All admin POST endpoints require a valid CSRF token (§4.4,§5) supplied
-//! as an `X-CSRF-Token` header. The token is issued in the login response
-//! body; the admin console stashes it and replays it on subsequent POSTs.
+//! - `GET {ADMIN_PATH}` unauthenticated → renders a themed login page
+//!   (see `admin_login.html`). The page exists, but it's bare: no
+//!   heading, no labels, no error feedback. Wrong passwords just
+//!   re-render the same page silently. A scanner learns the path
+//!   exists; it does not learn whether any credential is close.
+//! - `POST {ADMIN_PATH}` accepts a standard `application/x-www-form-urlencoded`
+//!   body with a `password` field. Correct password → session cookie is
+//!   set and the admin console SPA is served. Wrong password or
+//!   rate-limit hit → the login page is re-rendered (200 OK, no cookie).
+//! - `GET {ADMIN_PATH}` authenticated → serves the admin console SPA.
+//! - All other `{ADMIN_PATH}/*` endpoints keep the strict non-enumeration
+//!   rule: missing/invalid session returns `404 not found` (§4.3).
+//!
+//! All admin POST endpoints past login require a valid CSRF token (§4.4)
+//! supplied as an `X-CSRF-Token` header. The token is rendered into the
+//! admin console HTML as a `<meta>` tag, and the SPA replays it on each
+//! state-changing request.
 
 use std::collections::HashMap;
 
+use askama::Template;
 use axum::{
-    Json,
+    Form, Json,
     extract::{FromRequestParts, Query, State},
     http::{HeaderMap, HeaderValue, StatusCode, header, request::Parts},
     response::{IntoResponse, Response},
@@ -25,9 +36,12 @@ use serde_json::{Value, json};
 use crate::auth::{self, Session};
 use crate::db::{self, ConfigList, ConfigRow, DidRow, EventType, HandleRow};
 use crate::error::{AppError, AppResult};
+use crate::theme::{self, Theme};
 use crate::validate;
+use crate::wordlist;
 
 use super::{AppState, ClientIp, clear_cookie, read_cookie, session_cookie};
+use super::public::{DecorationView, randomize_gradient_direction};
 
 pub const SESSION_COOKIE: &str = "anarchy_session";
 const CSRF_HEADER: &str = "x-csrf-token";
@@ -83,34 +97,37 @@ impl FromRequestParts<AppState> for CsrfOk {
 }
 
 // ==================================================================
-// POST {ADMIN_PATH} — login
+// POST {ADMIN_PATH} — login (browser form submission)
 // ==================================================================
 
 #[derive(Deserialize)]
-pub struct LoginRequest {
+pub struct LoginForm {
     pub password: String,
 }
 
 pub async fn login(
     State(state): State<AppState>,
     ClientIp(ip): ClientIp,
-    Json(req): Json<LoginRequest>,
-) -> AppResult<Response> {
-    if !state.rate_limiter.is_trusted(ip)
-        && !state.rate_limiter.allow_admin_login(ip).await?
-    {
-        return Err(AppError::NotFound);
-    }
-    if !auth::verify_admin_password(&req.password, &state.admin.password_hash) {
-        return Err(AppError::NotFound);
+    Form(form): Form<LoginForm>,
+) -> Response {
+    // Rate-limit hits and wrong passwords are indistinguishable from
+    // the user's perspective — both just re-render the login page
+    // silently, no cookie set. That's the non-enumeration compromise:
+    // the path reveals a login page exists, but no attempt gives away
+    // whether it was close to correct.
+    let allowed = state.rate_limiter.is_trusted(ip)
+        || state
+            .rate_limiter
+            .allow_admin_login(ip)
+            .await
+            .unwrap_or(false);
+    if !allowed || !auth::verify_admin_password(&form.password, &state.admin.password_hash) {
+        return render_login_page(&state);
     }
 
     let (session, cookie_value) =
         auth::issue_session(&state.admin.session_secret, state.admin.session_ttl_seconds);
-    let csrf = auth::csrf_token_for(&state.admin.session_secret, &session);
-
-    let body = Json(json!({ "ok": true, "csrf_token": csrf }));
-    let mut resp = body.into_response();
+    let mut resp = render_admin_console(&state, &session);
     resp.headers_mut().append(
         header::SET_COOKIE,
         session_cookie(
@@ -119,12 +136,11 @@ pub async fn login(
             state.admin.session_ttl_seconds,
         ),
     );
-    apply_admin_headers(resp.headers_mut());
-    Ok(resp)
+    resp
 }
 
 // ==================================================================
-// GET {ADMIN_PATH} — console page (placeholder)
+// GET {ADMIN_PATH} — console or login page depending on auth state
 // ==================================================================
 
 /// Embedded admin SPA (§11). Two placeholders — `{{CSRF_TOKEN}}` and
@@ -133,14 +149,66 @@ pub async fn login(
 /// without a bootstrap round-trip.
 const ADMIN_HTML: &str = include_str!("../../static/admin.html");
 
-pub async fn console(
-    RequireAdmin(session): RequireAdmin,
-    State(state): State<AppState>,
-) -> Response {
-    let csrf = auth::csrf_token_for(&state.admin.session_secret, &session);
+pub async fn console(headers: HeaderMap, State(state): State<AppState>) -> Response {
+    match session_from_headers(&headers, &state) {
+        Some(session) => render_admin_console(&state, &session),
+        None => render_login_page(&state),
+    }
+}
+
+/// Try to extract and verify the session from the request's cookies.
+/// Returns `None` for any missing/invalid/expired session — the caller
+/// decides how to react (render login vs reject).
+fn session_from_headers(headers: &HeaderMap, state: &AppState) -> Option<Session> {
+    let raw = read_cookie(headers, SESSION_COOKIE)?;
+    auth::parse_session(&state.admin.session_secret, &raw)
+}
+
+// ==================================================================
+// render helpers
+// ==================================================================
+
+#[derive(Template)]
+#[template(path = "admin_login.html")]
+struct AdminLoginPage<'a> {
+    theme: &'a Theme,
+    base_domain: &'a str,
+    background: String,
+    deco: DecorationView,
+    admin_path: &'a str,
+}
+
+fn render_login_page(state: &AppState) -> Response {
+    let t = theme::pick_random();
+    let tmpl = AdminLoginPage {
+        theme: t,
+        base_domain: &state.base_domain,
+        background: randomize_gradient_direction(t.background),
+        deco: DecorationView::from_theme(t),
+        admin_path: &state.admin.path,
+    };
+    let html = tmpl
+        .render()
+        .unwrap_or_else(|e| format!("<!-- login template render: {e} -->"));
+    let mut resp = (StatusCode::OK, html).into_response();
+    resp.headers_mut().insert(
+        header::CONTENT_TYPE,
+        HeaderValue::from_static("text/html; charset=utf-8"),
+    );
+    apply_admin_headers(resp.headers_mut());
+    resp
+}
+
+/// Compile-time version from the crate's Cargo.toml.
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+fn render_admin_console(state: &AppState, session: &Session) -> Response {
+    let csrf = auth::csrf_token_for(&state.admin.session_secret, session);
     let body = ADMIN_HTML
         .replace("{{CSRF_TOKEN}}", &csrf)
-        .replace("{{ADMIN_PATH}}", &state.admin.path);
+        .replace("{{ADMIN_PATH}}", &state.admin.path)
+        .replace("{{BASE_DOMAIN}}", &state.base_domain)
+        .replace("{{VERSION}}", VERSION);
     let mut resp = (StatusCode::OK, body).into_response();
     resp.headers_mut().insert(
         header::CONTENT_TYPE,
@@ -155,10 +223,15 @@ pub async fn console(
 // ==================================================================
 
 pub async fn logout(_: RequireAdmin) -> Response {
-    let mut resp = AppError::NotFound.into_response();
-    resp.headers_mut()
-        .append(header::SET_COOKIE, clear_cookie(SESSION_COOKIE));
-    apply_admin_headers(resp.headers_mut());
+    // Clear the session cookie and redirect to the public home page
+    // so the admin lands somewhere usable instead of a 404. The
+    // `RequireAdmin` extractor still gates this endpoint — unauth'd
+    // hits collapse to 404 per §4.3 non-enumeration.
+    let mut resp = (StatusCode::FOUND, "").into_response();
+    let h = resp.headers_mut();
+    h.insert(header::LOCATION, HeaderValue::from_static("/"));
+    h.append(header::SET_COOKIE, clear_cookie(SESSION_COOKIE));
+    apply_admin_headers(h);
     resp
 }
 
@@ -515,17 +588,27 @@ pub struct PreviewKeywordRequest {
     pub keyword: String,
 }
 
+/// Upper bound on the number of matching words returned to the admin.
+/// High enough to show a substantial sample without blowing up the UI
+/// on very short substrings like `"e"` or `"in"`.
+const KEYWORD_PREVIEW_LIMIT: usize = 50;
+
 pub async fn preview_keyword(
     _: RequireAdmin,
     _: CsrfOk,
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
     Json(req): Json<PreviewKeywordRequest>,
 ) -> AppResult<Response> {
-    let matches = db::handles_matching_keyword(state.service.pool(), &req.keyword).await?;
+    // Check against a built-in common-English-word list rather than the
+    // live handles table — the goal is to surface *false-positive risk*
+    // before the block is committed, not to enumerate existing users.
+    let keyword = validate::normalize_keyword(&req.keyword);
+    let result = wordlist::matching(&keyword, KEYWORD_PREVIEW_LIMIT);
     let mut resp = Json(json!({
-        "keyword": req.keyword,
-        "matches": matches,
-        "count": matches.len(),
+        "keyword": keyword,
+        "matches": result.matches,
+        "count": result.total,
+        "shown": result.matches.len(),
     }))
     .into_response();
     apply_admin_headers(resp.headers_mut());

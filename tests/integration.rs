@@ -110,25 +110,31 @@ fn extract_cookie(resp: &axum::response::Response, name: &str) -> Option<String>
     None
 }
 
-/// Log in and return `(session_cookie_value, csrf_token)`. Fails the
-/// test on wrong password or any non-success status.
+/// Extract a `<meta name="csrf-token" content="...">` value out of a
+/// rendered admin console page. Mirrors the substitution the handler
+/// performs on the static SPA.
+fn extract_csrf_from_html(html: &str) -> Option<String> {
+    let needle = "<meta name=\"csrf-token\" content=\"";
+    let start = html.find(needle)? + needle.len();
+    let end_rel = html[start..].find('"')?;
+    Some(html[start..start + end_rel].to_string())
+}
+
+/// Log in via the browser-style form POST and return
+/// `(session_cookie_value, csrf_token)`. On success the server returns
+/// the admin console HTML directly; CSRF is pulled from its `<meta>`.
 async fn admin_login(app: axum::Router) -> (String, String) {
     let req = Request::builder()
         .method("POST")
         .uri(TEST_ADMIN_PATH)
-        .header("content-type", "application/json")
-        .body(Body::from(
-            json!({ "password": TEST_ADMIN_PASSWORD }).to_string(),
-        ))
+        .header("content-type", "application/x-www-form-urlencoded")
+        .body(Body::from(format!("password={TEST_ADMIN_PASSWORD}")))
         .unwrap();
     let resp = app.oneshot(req).await.unwrap();
     assert_eq!(resp.status(), StatusCode::OK, "login should succeed");
     let cookie = extract_cookie(&resp, "anarchy_session").expect("session cookie set");
-    let body: Value = body_json(resp).await;
-    let csrf = body["csrf_token"]
-        .as_str()
-        .expect("login returns csrf_token")
-        .to_string();
+    let html = body_string(resp).await;
+    let csrf = extract_csrf_from_html(&html).expect("admin console HTML carries csrf meta");
     (cookie, csrf)
 }
 
@@ -299,19 +305,34 @@ async fn manage_wrong_secret_returns_invalid_secret_error() {
 // ==================================================================
 
 #[tokio::test]
-async fn admin_path_without_session_is_404() {
+async fn admin_path_without_session_serves_login_page() {
+    // GET {ADMIN_PATH} unauthenticated now renders a themed login page
+    // rather than 404ing. The page is minimal — just a password input
+    // posting back to the same path.
     let (state, _) = build_state().await;
     let app = routes::build(state);
     let resp = app
         .oneshot(Request::builder().uri(TEST_ADMIN_PATH).body(Body::empty()).unwrap())
         .await
         .unwrap();
-    assert_eq!(resp.status(), StatusCode::NOT_FOUND);
-    assert_eq!(body_string(resp).await, "not found");
+    assert_eq!(resp.status(), StatusCode::OK);
+    let ct = resp
+        .headers()
+        .get(header::CONTENT_TYPE)
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string();
+    assert!(ct.contains("text/html"));
+    let html = body_string(resp).await;
+    assert!(html.contains("name=\"password\""));
+    assert!(html.contains(&format!("action=\"{TEST_ADMIN_PATH}\"")));
 }
 
 #[tokio::test]
-async fn admin_login_wrong_password_is_404() {
+async fn admin_login_wrong_password_renders_login_silently() {
+    // Wrong passwords re-render the login page at 200 OK with no
+    // cookie set and no error message. Identical to a fresh GET.
     let (state, _) = build_state().await;
     let app = routes::build(state);
     let resp = app
@@ -319,13 +340,16 @@ async fn admin_login_wrong_password_is_404() {
             Request::builder()
                 .method("POST")
                 .uri(TEST_ADMIN_PATH)
-                .header("content-type", "application/json")
-                .body(Body::from(json!({ "password": "wrong" }).to_string()))
+                .header("content-type", "application/x-www-form-urlencoded")
+                .body(Body::from("password=wrong"))
                 .unwrap(),
         )
         .await
         .unwrap();
-    assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    assert_eq!(resp.status(), StatusCode::OK);
+    assert!(extract_cookie(&resp, "anarchy_session").is_none());
+    let html = body_string(resp).await;
+    assert!(html.contains("name=\"password\""));
 }
 
 #[tokio::test]
@@ -586,7 +610,7 @@ async fn admin_export_config_is_attached_json() {
 }
 
 #[tokio::test]
-async fn admin_logout_clears_cookie_and_returns_404() {
+async fn admin_logout_clears_cookie_and_redirects_home() {
     let (state, _) = build_state().await;
     let app = routes::build(state);
     let (cookie, _csrf) = admin_login(app.clone()).await;
@@ -600,7 +624,11 @@ async fn admin_logout_clears_cookie_and_returns_404() {
         )
         .await
         .unwrap();
-    assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    assert_eq!(resp.status(), StatusCode::FOUND);
+    assert_eq!(
+        resp.headers().get(header::LOCATION).unwrap().to_str().unwrap(),
+        "/"
+    );
     // Set-Cookie for the session must be present and expiring.
     let set_cookie = resp
         .headers()
@@ -613,13 +641,14 @@ async fn admin_logout_clears_cookie_and_returns_404() {
 }
 
 #[tokio::test]
-async fn admin_preview_keyword_returns_registered_matches() {
+async fn admin_preview_keyword_surfaces_common_word_false_positives() {
+    // `/preview-keyword` now checks against an embedded common-English
+    // word list (for false-positive awareness), not the live handles
+    // table. Seeded registry state should be irrelevant.
     let (state, pool) = build_state().await;
     db::register_new_did_with_handle(&pool, "did:plc:a", "h", "alice")
         .await
         .unwrap();
-    db::add_handle(&pool, "did:plc:a", "malice").await.unwrap();
-    db::add_handle(&pool, "did:plc:a", "bob").await.unwrap();
     let app = routes::build(state);
     let (cookie, csrf) = admin_login(app.clone()).await;
 
@@ -631,15 +660,18 @@ async fn admin_preview_keyword_returns_registered_matches() {
                 .header("cookie", format!("anarchy_session={cookie}"))
                 .header("x-csrf-token", &csrf)
                 .header("content-type", "application/json")
-                .body(Body::from(json!({ "keyword": "lic" }).to_string()))
+                .body(Body::from(json!({ "keyword": "night" }).to_string()))
                 .unwrap(),
         )
         .await
         .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
     let body: Value = body_json(resp).await;
-    assert_eq!(body["count"], 2);
     let matches = body["matches"].as_array().unwrap();
-    assert!(matches.iter().any(|m| m == "alice"));
-    assert!(matches.iter().any(|m| m == "malice"));
+    // "night" is present in the embedded common-word list, so at least
+    // one match is guaranteed. Registered handles like "alice" are not
+    // part of that list and must not appear.
+    assert!(matches.iter().any(|m| m == "night"));
+    assert!(!matches.iter().any(|m| m == "alice"));
+    assert!(body["count"].as_u64().unwrap() >= 1);
 }

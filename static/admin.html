@@ -1,748 +1,1392 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="noindex">
-  <!--
-    These two values are substituted server-side by the console handler
-    in src/handlers/admin.rs before the page is returned. Both come
-    from an authenticated session; if you're viewing raw placeholders,
-    the file was served directly instead of through the handler.
-  -->
-  <meta name="csrf-token" content="{{CSRF_TOKEN}}">
-  <meta name="admin-path" content="{{ADMIN_PATH}}">
-  <title>anarchy.lgbt registry admin</title>
-  <style>
-    :root {
-      --bg: #0a0a0a;
-      --panel: #0f0f0f;
-      --fg: #e0e0e0;
-      --muted: #888;
-      --border: #2a2a2a;
-      --accent: #4a9eff;
-      --danger: #e05050;
+<meta charset="utf-8" />
+<title>anarchy.lgbt – Handle Registry Admin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<!--
+  These placeholders are substituted server-side by the console handler
+  in src/handlers/admin.rs before the page is served. If you see the raw
+  `{{NAME}}` tokens, the file was served directly instead of through the
+  handler.
+-->
+<meta name="csrf-token" content="{{CSRF_TOKEN}}" />
+<meta name="admin-path" content="{{ADMIN_PATH}}" />
+<meta name="base-domain" content="{{BASE_DOMAIN}}" />
+<meta name="version" content="{{VERSION}}" />
+<style>
+  :root {
+    --bg: #050510;
+    --panel: rgba(15,15,35,0.95);
+    --accent: #ff9ad5;
+    --accent2: #7ad7ff;
+    --danger: #ff5f7a;
+    --text: #f7f7ff;
+    --muted: #9ca3af;
+    --border: rgba(148,163,184,0.5);
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 1.5rem;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: radial-gradient(circle at top, #1f2937 0, #020617 55%, #000 100%);
+    color: var(--text);
+  }
+  h1, h2, h3 {
+    margin: 0 0 0.5rem 0;
+    font-weight: 650;
+  }
+  h1 span.version {
+    font-size: 0.9rem;
+    color: var(--muted);
+    margin-left: 0.5rem;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.8fr);
+    gap: 1rem;
+  }
+  .card {
+    background: var(--panel);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 1rem 1.25rem 1.1rem;
+    box-shadow: 0 18px 40px rgba(15,23,42,0.7);
+  }
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+  }
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid rgba(148,163,184,0.6);
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+  .tag-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: linear-gradient(135deg,#5eead4,#a855f7);
+  }
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .vip-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.05rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid rgba(251, 191, 36, 0.8);
+    font-size: 0.7rem;
+    font-weight: 600;
+    background: radial-gradient(circle at top left, #facc15, #f97316);
+    color: #111827;
+    white-space: nowrap;
+    margin-top: 0.25rem;
+  }
+  .vip-badge-star {
+    font-size: 0.8rem;
+  }
+  .blocked-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.05rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid rgba(239, 68, 68, 0.75);
+    font-size: 0.7rem;
+    font-weight: 600;
+    background: radial-gradient(circle at top left, #fca5a5, #ef4444);
+    color: #111827;
+    white-space: nowrap;
+    margin-top: 0.25rem;
+  }
+  .blocked-badge-icon {
+    font-size: 0.8rem;
+  }
+  .metrics-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+  }
+  .metric-card {
+    padding: 0.4rem 0.8rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: rgba(15, 23, 42, 0.92);
+    font-size: 0.75rem;
+    min-width: 90px;
+  }
+  .metric-label {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.65rem;
+    color: var(--muted);
+    margin-bottom: 0.2rem;
+  }
+  .metric-value {
+    font-weight: 650;
+    font-size: 0.9rem;
+  }
+  .metric-vip {
+    border-color: rgba(250, 204, 21, 0.8);
+  }
+  .metric-blocked {
+    border-color: rgba(248, 113, 113, 0.85);
+  }
+  .row-vip {
+    background: radial-gradient(circle at left, rgba(250, 204, 21, 0.12), transparent 55%);
+  }
+  .row-blocked {
+    background: radial-gradient(circle at left, rgba(248, 113, 113, 0.16), transparent 55%);
+  }
+  .row-vip.row-blocked {
+    background:
+      radial-gradient(circle at left, rgba(248, 113, 113, 0.16), transparent 55%),
+      radial-gradient(circle at right, rgba(250, 204, 21, 0.12), transparent 55%);
+  }
+  .primary-handle {
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-top: 0.15rem;
+  }
+  button {
+    border-radius: 999px;
+    border: 1px solid rgba(148,163,184,0.6);
+    background: radial-gradient(circle at top left,#38bdf8,#6366f1);
+    color: #0b1120;
+    font-size: 0.82rem;
+    padding: 0.3rem 0.85rem;
+    cursor: pointer;
+    font-weight: 550;
+  }
+  button.danger {
+    background: radial-gradient(circle at top left,#fb7185,#ea580c);
+    color: #0b1120;
+  }
+  button.ghost {
+    background: transparent;
+    color: var(--muted);
+  }
+  input[type="text"] {
+    width: 100%;
+    padding: 0.35rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid rgba(148,163,184,0.6);
+    background: rgba(15,23,42,0.8);
+    color: var(--text);
+    font-size: 0.82rem;
+  }
+  .field-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    align-items: center;
+  }
+  .pill-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.5rem;
+  }
+  .pill {
+    border-radius: 999px;
+    padding: 0.13rem 0.6rem;
+    font-size: 0.75rem;
+    border: 1px solid rgba(148,163,184,0.6);
+    background: rgba(15,23,42,0.9);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .pill button {
+    border-radius: 999px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    padding: 0;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+  .pill button:hover {
+    color: var(--danger);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+  }
+  th, td {
+    padding: 0.35rem 0.4rem;
+    border-bottom: 1px solid rgba(30,64,175,0.6);
+    text-align: left;
+  }
+  th {
+    color: var(--muted);
+    font-weight: 500;
+  }
+  tbody tr:hover {
+    background: rgba(15,23,42,0.85);
+  }
+  .muted {
+    color: var(--muted);
+  }
+  .status-bar {
+    font-size: 0.78rem;
+    margin-top: 0.4rem;
+    color: var(--muted);
+  }
+  @media (max-width: 900px) {
+    .grid {
+      grid-template-columns: minmax(0,1fr);
     }
-    * { box-sizing: border-box; }
+  }
+
+  @media (max-width: 640px) {
     body {
-      background: var(--bg);
-      color: var(--fg);
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      margin: 0;
-      padding: 1rem 2rem 3rem 2rem;
-      line-height: 1.4;
-      font-size: 14px;
-    }
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 0.8rem;
-      margin-bottom: 1rem;
-    }
-    h1 { font-size: 1.1rem; margin: 0; font-weight: 600; }
-    h2 {
-      font-size: 0.85rem;
-      margin: 1.8rem 0 0.6rem 0;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-    }
-    h3 { font-size: 0.9rem; margin: 0.6rem 0 0.3rem 0; font-weight: 600; }
-    button {
-      background: #1a1a1a;
-      color: var(--fg);
-      border: 1px solid var(--border);
-      padding: 0.35rem 0.7rem;
-      border-radius: 3px;
-      cursor: pointer;
-      font-size: 0.85rem;
-      font-family: inherit;
-    }
-    button:hover { background: #242424; }
-    button.danger { color: var(--danger); border-color: #4a2020; }
-    button.danger:hover { background: #2a1515; }
-    input[type=text], input[type=password] {
-      background: #111;
-      color: var(--fg);
-      border: 1px solid var(--border);
-      padding: 0.35rem 0.6rem;
-      border-radius: 3px;
-      font-size: 0.85rem;
-      font-family: inherit;
-    }
-    input[type=file] { font-size: 0.8rem; color: var(--muted); }
-    table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; font-size: 0.85rem; }
-    th, td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--border); vertical-align: top; }
-    th { color: var(--muted); font-weight: 500; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
-    code {
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 0.88em;
-      color: var(--fg);
-    }
-    .muted { color: var(--muted); }
-    .status {
-      font-size: 0.8rem;
-      color: var(--muted);
-      min-height: 1.2em;
-      margin-top: 0.3rem;
-    }
-    .metrics-strip {
-      display: flex;
-      gap: 2rem;
-      flex-wrap: wrap;
-      font-size: 0.9rem;
-    }
-    .metrics-strip .label {
-      color: var(--muted);
-      margin-right: 0.4rem;
-      text-transform: uppercase;
-      font-size: 0.75rem;
-      letter-spacing: 0.06em;
-    }
-    .inline-form {
-      display: flex;
-      gap: 0.4rem;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-    .inline-form input { flex: 1; min-width: 140px; }
-
-    .handle-chip {
-      display: inline-flex;
-      gap: 0.3rem;
-      align-items: center;
-      margin: 0.1rem 0.25rem 0.1rem 0;
-    }
-
-    .policy-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 1rem;
-    }
-    .policy-section {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 0.8rem;
-    }
-    .policy-section ul {
-      list-style: none;
-      padding: 0;
-      margin: 0 0 0.5rem 0;
-      max-height: 220px;
-      overflow-y: auto;
-    }
-    .policy-section li {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0.25rem 0;
-      border-bottom: 1px solid var(--border);
-      font-size: 0.85rem;
-    }
-    .policy-section li:last-child { border-bottom: none; }
-    .policy-section li button {
-      padding: 0.1rem 0.4rem;
-      font-size: 0.8rem;
-      opacity: 0.7;
-    }
-    .policy-section li button:hover { opacity: 1; }
-    .policy-section input { width: 100%; margin-bottom: 0.3rem; }
-    .policy-section .buttons {
-      display: flex;
-      gap: 0.4rem;
-      margin-top: 0.3rem;
-    }
-
-    .tool { margin-bottom: 1.2rem; }
-
-    #activity-body {
-      max-height: 400px;
-      overflow-y: auto;
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 0.4rem 0.8rem;
-    }
-    .activity-row {
-      display: flex;
-      gap: 0.8rem;
-      padding: 0.25rem 0;
-      border-bottom: 1px solid var(--border);
-      font-size: 0.82rem;
-    }
-    .activity-row:last-child { border-bottom: none; }
-    .activity-row.blocked .evt { color: var(--danger); }
-    .activity-row .ts {
-      color: var(--muted);
-      font-family: ui-monospace, monospace;
-      font-size: 0.75rem;
-      flex-shrink: 0;
-      width: 13rem;
-    }
-    .activity-row .evt {
-      color: var(--accent);
-      flex-shrink: 0;
-      width: 13rem;
-    }
-
-    .io-controls {
-      display: flex;
-      gap: 1rem;
-      flex-wrap: wrap;
-    }
-    .io-group {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 0.7rem 0.9rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.4rem;
-      min-width: 240px;
-    }
-    .io-group strong { font-size: 0.85rem; }
-
-    .danger-zone {
-      background: #190909;
-      border: 1px solid #3a1515;
-      border-radius: 4px;
       padding: 0.9rem;
-      margin-top: 1rem;
     }
-    .danger-zone h2 { color: #c07070; margin-top: 0; }
-    .danger-zone h3 { color: #c07070; }
-  </style>
+
+    h1 {
+      font-size: 1.3rem;
+    }
+
+    .grid {
+      gap: 0.75rem;
+    }
+
+    .card {
+      padding: 0.9rem 1rem 1rem;
+    }
+
+    .metrics-strip {
+      gap: 0.45rem;
+    }
+
+    .metric-card {
+      flex: 1 1 45%;
+      min-width: 0;
+      padding: 0.35rem 0.6rem;
+    }
+
+    .field-row {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .field-row button {
+      width: 100%;
+      text-align: center;
+    }
+
+    #registry-table,
+    #registry-table thead,
+    #registry-table tbody,
+    #registry-table tr,
+    #registry-table th,
+    #registry-table td {
+      font-size: 0.76rem;
+    }
+
+    #registry-table,
+    #activity-body {
+      display: block;
+    }
+
+    #registry-table {
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+  }
+
+  @media (max-width: 380px) {
+    body {
+      padding: 0.75rem;
+    }
+  }
+</style>
 </head>
 <body>
-  <header>
-    <h1>anarchy.lgbt registry admin</h1>
-    <button onclick="logout()">Logout</button>
-  </header>
-
-  <section>
-    <h2>Metrics</h2>
-    <div class="metrics-strip">
-      <div><span class="label">Registrations / 1h</span><span id="m-1h">—</span></div>
-      <div><span class="label">Registrations / 24h</span><span id="m-24h">—</span></div>
-      <div><span class="label">Top PDS</span><span id="m-pds">—</span></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+    <div>
+      <h1>anarchy.lgbt registry <span class="version">v<span id="version-span"></span></span></h1>
+      <div class="muted">Admin console</div>
     </div>
-  </section>
-
-  <section>
-    <h2>Registry</h2>
-    <div class="status" id="registry-status">Loading registry…</div>
-    <table>
-      <thead>
-        <tr>
-          <th style="width: 40%;">DID</th>
-          <th>Handles</th>
-          <th style="width: 8rem;"></th>
-        </tr>
-      </thead>
-      <tbody id="registry-body"></tbody>
-    </table>
-  </section>
-
-  <section>
-    <h2>Tools</h2>
-    <div class="tool">
-      <h3>Resolve handle → DID</h3>
-      <div class="inline-form">
-        <input id="resolve-input" placeholder="someone.bsky.social">
-        <button onclick="resolveHandle()">Resolve</button>
-      </div>
-      <div class="status" id="resolve-status"></div>
+    <div class="controls">
+      <button class="ghost" id="refresh-btn">Refresh</button>
+      <button class="danger" id="logout-btn">Logout</button>
     </div>
-    <div class="tool">
-      <h3>Assign handle to DID</h3>
-      <div class="inline-form">
-        <input id="assign-did" placeholder="did:plc:example">
-        <input id="assign-sub" placeholder="reserved-sub">
-        <button onclick="assignHandle()">Assign</button>
-      </div>
-      <div class="status" id="assign-status"></div>
-    </div>
-  </section>
+  </div>
 
-  <section>
-    <h2>Policy</h2>
-    <div class="policy-grid">
-      <div class="policy-section" data-list="vip_dids">
-        <h3>VIP DIDs</h3>
-        <ul data-role="list"></ul>
-        <input data-role="value" placeholder="did:plc:examplevip">
-        <input data-role="note" placeholder="note (optional)">
-        <div class="buttons">
-          <button data-action="add">Add</button>
+  <div class="metrics-strip">
+    <div class="metric-card">
+      <div class="metric-label">DIDs</div>
+      <div class="metric-value" id="metric-dids">0</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Handles</div>
+      <div class="metric-value" id="metric-handles">0</div>
+    </div>
+    <div class="metric-card metric-vip">
+      <div class="metric-label">VIP DIDs</div>
+      <div class="metric-value" id="metric-vips">0</div>
+    </div>
+    <div class="metric-card metric-blocked">
+      <div class="metric-label">Blocked DIDs</div>
+      <div class="metric-value" id="metric-blocked">0</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>Registry</h2>
+          <div class="muted">All DIDs and their handles</div>
         </div>
-        <div class="status" data-role="status"></div>
+        <span class="tag"><span class="tag-dot"></span> live</span>
       </div>
-      <div class="policy-section" data-list="blocked_dids">
-        <h3>Blocked DIDs</h3>
-        <ul data-role="list"></ul>
-        <input data-role="value" placeholder="did:plc:blockme">
-        <input data-role="note" placeholder="note (optional)">
-        <div class="buttons">
-          <button data-action="add">Add</button>
-        </div>
-        <div class="status" data-role="status"></div>
+
+      <div class="field-row" style="margin-top:0.35rem;">
+        <input
+          type="text"
+          id="registry-filter"
+          placeholder="Filter by DID or handle…"
+        />
       </div>
-      <div class="policy-section" data-list="blocked_pds">
-        <h3>Blocked PDS hosts</h3>
-        <ul data-role="list"></ul>
-        <input data-role="value" placeholder="pds.example.com">
-        <input data-role="note" placeholder="note (optional)">
-        <div class="buttons">
-          <button data-action="add">Add</button>
-        </div>
-        <div class="status" data-role="status"></div>
+
+      <div class="status-bar" id="registry-status">Loading registry…</div>
+      <div style="max-height:380px;overflow:auto;margin-top:0.5rem;">
+        <table id="registry-table">
+          <thead>
+            <tr>
+              <th>DID</th>
+              <th>Handles</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="registry-body"></tbody>
+        </table>
       </div>
-      <div class="policy-section" data-list="blocked_keywords">
-        <h3>Blocked keywords</h3>
-        <ul data-role="list"></ul>
-        <input data-role="value" placeholder="substring">
-        <input data-role="note" placeholder="note (optional)">
-        <div class="buttons">
-          <button data-action="add">Add</button>
-          <button data-action="preview">Preview matches</button>
+
+      <div class="card" style="margin-top:0.9rem;">
+        <div class="card-header" style="margin-bottom:0.4rem;">
+          <div>
+            <h3 style="font-size:0.95rem;">Handle → DID</h3>
+            <div class="muted">Quick resolver for Bluesky handles</div>
+          </div>
         </div>
-        <div class="status" data-role="status"></div>
+        <div class="field-row">
+          <input
+            type="text"
+            id="resolve-handle-input"
+            placeholder="someone.bsky.social or @someone"
+          />
+          <button id="resolve-handle-btn">Resolve</button>
+        </div>
+        <div class="status-bar" id="resolve-status" style="margin-top:0.6rem;">
+          Enter a handle and click Resolve.
+        </div>
+        <div class="status-bar" id="resolve-result" style="margin-top:0.3rem;"></div>
       </div>
-      <div class="policy-section" data-list="reserved_handles">
-        <h3>Reserved handles</h3>
-        <ul data-role="list"></ul>
-        <input data-role="value" placeholder="goddess">
-        <input data-role="note" placeholder="note (optional)">
-        <div class="buttons">
-          <button data-action="add">Add</button>
+
+      <div style="margin-top:1rem;border-top:1px dashed rgba(148,163,184,0.5);padding-top:0.75rem;">
+        <div class="card-header" style="padding:0;">
+          <div>
+            <h3 style="font-size:0.95rem;">Recent activity</h3>
+            <div class="muted">Latest registrations & deletions</div>
+          </div>
+          <button class="ghost" id="activity-refresh-btn">Reload</button>
         </div>
-        <div class="status" data-role="status"></div>
+        <div style="max-height:180px;overflow:auto;margin-top:0.4rem;">
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Event</th>
+                <th>DID</th>
+                <th>Handle</th>
+                <th>PDS</th>
+              </tr>
+            </thead>
+            <tbody id="activity-body"></tbody>
+          </table>
+        </div>
       </div>
     </div>
-  </section>
 
-  <section>
-    <h2>Activity log</h2>
-    <div class="status" id="activity-status">Loading…</div>
-    <div id="activity-body"></div>
-  </section>
-
-  <section>
-    <h2>Import / Export</h2>
-    <div class="io-controls">
-      <div class="io-group">
-        <strong>Config</strong>
-        <button onclick="exportConfig()">Export</button>
-        <input type="file" id="import-config-file" accept=".json,application/json">
-        <button onclick="importConfig()">Import (replaces current)</button>
-        <div class="status" id="io-config-status"></div>
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>Policy controls</h2>
+          <div class="muted">VIPs, blocklists, and limits</div>
+        </div>
       </div>
-      <div class="io-group">
-        <strong>Registry</strong>
-        <button onclick="exportRegistry('json')">Export (JSON)</button>
-        <button onclick="exportRegistry('csv')">Export (CSV)</button>
-        <input type="file" id="import-registry-file" accept=".json,application/json">
-        <button onclick="importRegistry()">Import (replaces current)</button>
-        <div class="status" id="io-registry-status"></div>
+
+      <div>
+        <h3 style="font-size:0.95rem;">VIP DIDs</h3>
+        <div class="muted">VIPs bypass handle-count limits.</div>
+        <div class="field-row">
+          <input type="text" id="vip-input" placeholder="did:plc:examplevip" />
+          <button id="vip-add-btn">Add VIP</button>
+        </div>
+        <div class="pill-list" id="vip-list"></div>
       </div>
+
+
+      <div style="margin-top:1.1rem;">
+        <h3 style="font-size:0.95rem;">Blocked DIDs</h3>
+        <div class="muted">Completely forbidden from registering.</div>
+        <div class="field-row">
+          <input type="text" id="block-did-input" placeholder="did:plc:blockme" />
+          <button id="block-did-add-btn">Block DID</button>
+        </div>
+        <div class="pill-list" id="block-did-list"></div>
+      </div>
+
+      <div style="margin-top:1.1rem;">
+        <h3 style="font-size:0.95rem;">Blocked PDS hosts</h3>
+        <div class="muted">Block registrations coming from these hosts.</div>
+        <div class="field-row">
+          <input type="text" id="block-pds-input" placeholder="pds.example.com" />
+          <button id="block-pds-add-btn">Block PDS</button>
+        </div>
+        <div class="pill-list" id="block-pds-list"></div>
+      </div>
+
+      <div style="margin-top:1.1rem;">
+        <div class="card-header" style="padding:0; margin-bottom:0.25rem;">
+          <div>
+            <h3 style="font-size:0.95rem;">Blocked handle keywords</h3>
+            <div class="muted">
+              Any handle containing these substrings will be rejected. Use for slurs and other banned terms.
+            </div>
+          </div>
+          <button
+            type="button"
+            class="ghost"
+            id="blocked-keyword-toggle-btn"
+            style="font-size:0.75rem; padding:0.2rem 0.7rem;"
+          >
+            Hide list
+          </button>
+        </div>
+
+        <div class="field-row">
+          <input
+            type="text"
+            id="blocked-keyword-input"
+            placeholder="comma-separated list. e.g. slur1, slur2, banned word"
+          />
+          <button id="blocked-keyword-add-btn">Block keyword</button>
+          <button class="ghost" id="blocked-keyword-preview-btn">Preview matches</button>
+        </div>
+
+        <div class="status-bar" id="blocked-keyword-preview-status"></div>
+
+        <div class="pill-list" id="blocked-keyword-list"></div>
+      </div>
+
+      <div style="margin-top:1.1rem;">
+      <h3 style="font-size:0.95rem;">Reserved handles</h3>
+      <div class="muted">
+        These subdomains cannot be claimed by users and can be assigned manually by you.
+      </div>
+      <div class="field-row">
+        <input type="text" id="reserved-input" placeholder="goddess" />
+        <button id="reserved-add-btn">Reserve</button>
+      </div>
+      <div class="pill-list" id="reserved-list"></div>
     </div>
-  </section>
 
-  <section class="danger-zone">
-    <h2>Danger zone</h2>
-    <h3>Delete all handles for a DID</h3>
-    <div class="inline-form">
-      <input id="danger-did" placeholder="did:plc:…">
-      <button class="danger" onclick="deleteDidByInput()">Delete all</button>
+    <!-- Assign reserved handle to a DID -->
+    <div
+      style="
+        margin-top:0.9rem;
+        border-top:1px dashed rgba(148,163,184,0.5);
+        padding-top:0.7rem;
+      "
+    >
+      <div class="muted" style="margin-bottom:0.4rem;">
+        Assign a reserved handle directly to a DID.
+      </div>
+
+      <div class="field-row">
+        <input
+          type="text"
+          id="assign-did-input"
+          placeholder="did:plc:example"
+        />
+      </div>
+
+      <div class="field-row" style="margin-top:0.45rem;">
+        <input
+          type="text"
+          id="assign-sub-input"
+          placeholder="reserved sub (e.g. goddess)"
+        />
+        <button id="assign-reserved-btn">Assign</button>
+      </div>
+
+      <div class="status-bar" id="assign-reserved-status" style="margin-top:0.6rem;"></div>
+      <div class="status-bar" id="assign-reserved-secret" style="margin-top:0.25rem;"></div>
+
+      <div class="status-bar" id="policy-status" style="margin-top:0.75rem;">
+        Loading policy…
+      </div>
+
+      <div style="margin-top:1.1rem; border-top:1px dashed rgba(148,163,184,0.5); padding-top:0.75rem;">
+        <h3 style="font-size:0.95rem;">Traffic overview</h3>
+
+        <div class="muted" style="margin-top:0.35rem;">
+          Registrations per hour (global):
+          <span id="metric-reg-hour">–</span>
+        </div>
+
+        <div class="muted" style="margin-top:0.35rem;">
+          Top PDS hosts by attempts:
+          <span id="metric-top-pds">–</span>
+        </div>
+
+        <div class="muted" style="margin-top:0.35rem;">
+          Recent IP spikes:
+          <span id="metric-ip-spikes">–</span>
+        </div>
+      </div>
+      <!-- Backups: export / import config + registry -->
+      <div
+        style="
+          margin-top:1.1rem;
+          border-top:1px dashed rgba(148,163,184,0.5);
+          padding-top:0.8rem;
+        "
+      >
+        <h3 style="font-size:0.95rem;">Backups</h3>
+        <div class="muted">
+          Export or import configuration and registry data.
+        </div>
+
+        <div class="field-row" style="margin-top:0.6rem;">
+          <button id="export-config-btn">Download config JSON</button>
+          <button id="export-registry-json-btn">Registry JSON</button>
+          <button id="export-registry-csv-btn">Registry CSV</button>
+        </div>
+
+        <div class="field-row" style="margin-top:0.6rem;">
+          <input type="file" id="config-import-file" accept="application/json" />
+          <button id="config-import-btn">Import config JSON</button>
+        </div>
+
+        <div class="field-row" style="margin-top:0.4rem;">
+          <input type="file" id="registry-import-file" accept="application/json" />
+          <button id="registry-import-btn">Import registry JSON</button>
+        </div>
+
+        <div class="status-bar" id="backup-status" style="margin-top:0.5rem;">
+          No backup actions yet.
+        </div>
+      </div>
+
     </div>
-    <div class="status" id="danger-status"></div>
-  </section>
 
-  <script>
-    // ==================================================================
-    // setup
-    // ==================================================================
-    const ADMIN = document.querySelector('meta[name="admin-path"]').content;
-    const CSRF = document.querySelector('meta[name="csrf-token"]').content;
+  </div>
 
-    async function apiGet(path) {
-      return fetch(ADMIN + path, { credentials: 'same-origin' });
-    }
+<script>
+  // Server-substituted constants. See src/handlers/admin.rs render_admin_console.
+  const ADMIN_PATH  = document.querySelector('meta[name="admin-path"]').content;
+  const CSRF_TOKEN  = document.querySelector('meta[name="csrf-token"]').content;
+  const BASE_DOMAIN = document.querySelector('meta[name="base-domain"]').content;
+  const VERSION     = document.querySelector('meta[name="version"]').content;
 
-    async function apiPost(path, body) {
-      return fetch(ADMIN + path, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: {
-          'content-type': 'application/json',
-          'x-csrf-token': CSRF,
-        },
-        body: JSON.stringify(body || {}),
-      });
-    }
+  let registryData = [];
+  let vipDidsMap = {};
+  let blockDidsMap = {};
 
-    function setStatus(target, text) {
-      const el = typeof target === 'string' ? document.getElementById(target) : target;
-      if (el) el.textContent = text;
-    }
+  document.getElementById("version-span").textContent = VERSION || "";
 
-    function escapeHtml(s) {
-      return String(s).replace(/[&<>"']/g, ch => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-      }[ch]));
-    }
-
-    // ==================================================================
-    // logout
-    // ==================================================================
-    async function logout() {
-      await apiGet('/logout');
-      location.reload();
-    }
-
-    // ==================================================================
-    // metrics
-    // ==================================================================
-    async function loadMetrics() {
-      const res = await apiGet('/metrics');
-      if (!res.ok) return;
-      const m = await res.json();
-      document.getElementById('m-1h').textContent = m.registrations_1h;
-      document.getElementById('m-24h').textContent = m.registrations_24h;
-      const pds = (m.top_pds_hosts || [])
-        .slice(0, 5)
-        .map(p => p.host + ' (' + p.count + ')')
-        .join(', ');
-      document.getElementById('m-pds').textContent = pds || '—';
-    }
-
-    // ==================================================================
-    // registry
-    // ==================================================================
-    async function loadRegistry() {
-      setStatus('registry-status', 'Loading registry…');
-      const res = await apiGet('/dids');
-      if (!res.ok) {
-        setStatus('registry-status', 'Failed to load registry. HTTP ' + res.status);
-        return;
-      }
-      const data = await res.json();
-      const tbody = document.getElementById('registry-body');
-      tbody.innerHTML = '';
-      for (const row of (data.dids || [])) {
-        const tr = document.createElement('tr');
-
-        const tdDid = document.createElement('td');
-        tdDid.innerHTML = '<code>' + escapeHtml(row.did) + '</code>';
-
-        const tdHandles = document.createElement('td');
-        for (const h of (row.handles || [])) {
-          const chip = document.createElement('span');
-          chip.className = 'handle-chip';
-          const code = document.createElement('code');
-          code.textContent = h.sub;
-          const btn = document.createElement('button');
-          btn.className = 'danger';
-          btn.textContent = 'Delete';
-          btn.onclick = () => deleteHandle(row.did, h.sub);
-          chip.appendChild(code);
-          chip.appendChild(btn);
-          tdHandles.appendChild(chip);
-        }
-
-        const tdAct = document.createElement('td');
-        const delAllBtn = document.createElement('button');
-        delAllBtn.className = 'danger';
-        delAllBtn.textContent = 'Delete DID';
-        delAllBtn.onclick = () => deleteDid(row.did);
-        tdAct.appendChild(delAllBtn);
-
-        tr.appendChild(tdDid);
-        tr.appendChild(tdHandles);
-        tr.appendChild(tdAct);
-        tbody.appendChild(tr);
-      }
-      setStatus('registry-status', 'Total DIDs: ' + (data.dids || []).length);
-    }
-
-    async function deleteHandle(did, sub) {
-      if (!confirm('Delete ' + sub + ' from ' + did + ' ?')) return;
-      const res = await apiPost('/delete-handle', { did, sub });
-      if (res.ok) loadRegistry();
-      else alert('Failed to delete handle. HTTP ' + res.status);
-    }
-
-    async function deleteDid(did) {
-      if (!confirm('Delete ALL handles for ' + did + ' ?\n\nThis cannot be undone.')) return;
-      const res = await apiPost('/delete-did', { did });
-      if (res.ok) loadRegistry();
-      else alert('Failed to delete DID. HTTP ' + res.status);
-    }
-
-    async function deleteDidByInput() {
-      const did = document.getElementById('danger-did').value.trim();
-      if (!did) {
-        setStatus('danger-status', 'Enter a DID first.');
-        return;
-      }
-      if (!confirm('Delete ALL handles for ' + did + ' ?\n\nThis cannot be undone.')) return;
-      setStatus('danger-status', 'Deleting…');
-      const res = await apiPost('/delete-did', { did });
-      if (res.ok) {
-        setStatus('danger-status', 'Deleted.');
-        document.getElementById('danger-did').value = '';
-        loadRegistry();
-      } else {
-        setStatus('danger-status', 'Failed. HTTP ' + res.status);
-      }
-    }
-
-    // ==================================================================
-    // tools: resolve + assign
-    // ==================================================================
-    async function resolveHandle() {
-      const handle = document.getElementById('resolve-input').value.trim();
-      if (!handle) {
-        setStatus('resolve-status', 'Please enter a handle.');
-        return;
-      }
-      setStatus('resolve-status', 'Resolving…');
-      const res = await apiPost('/resolve', { handle });
-      if (!res.ok) {
-        setStatus('resolve-status', 'Network error.');
-        return;
-      }
-      const data = await res.json();
-      if (!data.did) {
-        setStatus('resolve-status', 'Could not resolve DID for this handle.');
-      } else {
-        setStatus('resolve-status', 'Resolved: ' + data.did);
-      }
-    }
-
-    async function assignHandle() {
-      const did = document.getElementById('assign-did').value.trim();
-      const sub = document.getElementById('assign-sub').value.trim();
-      if (!did || !sub) {
-        setStatus('assign-status', 'Enter both a DID and a handle.');
-        return;
-      }
-      setStatus('assign-status', 'Assigning…');
-      const res = await apiPost('/assign-handle', { did, sub });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setStatus('assign-status', data.error || ('Assign failed. HTTP ' + res.status));
-        return;
-      }
-      const data = await res.json();
-      const msg = data.secret_key
-        ? 'Assigned. New DID created. Secret key: ' + data.secret_key
-        : 'Assigned to existing DID.';
-      setStatus('assign-status', msg);
-      document.getElementById('assign-sub').value = '';
-      loadRegistry();
-    }
-
-    // ==================================================================
-    // policy
-    // ==================================================================
-    const ADD_ACTION = {
-      'vip_dids':         'addVipDid',
-      'blocked_dids':     'addBlockDid',
-      'blocked_pds':      'addBlockPds',
-      'blocked_keywords': 'addBlockKeyword',
-      'reserved_handles': 'addReserved',
-    };
-    const REMOVE_ACTION = {
-      'vip_dids':         'removeVipDid',
-      'blocked_dids':     'removeBlockDid',
-      'blocked_pds':      'removeBlockPds',
-      'blocked_keywords': 'removeBlockKeyword',
-      'reserved_handles': 'removeReserved',
-    };
-
-    async function loadPolicy() {
-      const res = await apiGet('/config');
-      if (!res.ok) return;
-      const cfg = await res.json();
-      for (const key of Object.keys(ADD_ACTION)) {
-        renderList(key, cfg[key] || []);
-      }
-    }
-
-    function renderList(key, entries) {
-      const section = document.querySelector('[data-list="' + key + '"]');
-      if (!section) return;
-      const ul = section.querySelector('[data-role="list"]');
-      ul.innerHTML = '';
-      for (const entry of entries) {
-        const li = document.createElement('li');
-        const span = document.createElement('span');
-        span.innerHTML =
-          '<code>' + escapeHtml(entry.value) + '</code>' +
-          (entry.note ? ' <span class="muted">— ' + escapeHtml(entry.note) + '</span>' : '');
-        const btn = document.createElement('button');
-        btn.textContent = '×';
-        btn.title = 'Remove';
-        btn.onclick = () => removeFromList(key, entry.value);
-        li.appendChild(span);
-        li.appendChild(btn);
-        ul.appendChild(li);
-      }
-    }
-
-    document.querySelectorAll('.policy-section [data-action="add"]').forEach(btn => {
-      btn.onclick = () => {
-        const section = btn.closest('.policy-section');
-        const key = section.dataset.list;
-        const value = section.querySelector('[data-role="value"]').value.trim();
-        const noteRaw = section.querySelector('[data-role="note"]').value.trim();
-        const note = noteRaw ? noteRaw : null;
-        if (!value) return;
-        addToList(key, value, note, section);
-      };
+  // Fetch helpers. POSTs always include the CSRF header — the rust
+  // service rejects admin mutations without a matching X-CSRF-Token.
+  async function apiGet(path) {
+    return fetch(ADMIN_PATH + path, { credentials: "same-origin" });
+  }
+  async function apiPost(path, payload) {
+    return fetch(ADMIN_PATH + path, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": CSRF_TOKEN,
+      },
+      body: JSON.stringify(payload || {}),
     });
+  }
 
-    document.querySelectorAll('.policy-section [data-action="preview"]').forEach(btn => {
-      btn.onclick = async () => {
-        const section = btn.closest('.policy-section');
-        const keyword = section.querySelector('[data-role="value"]').value.trim();
-        if (!keyword) return;
-        const status = section.querySelector('[data-role="status"]');
-        setStatus(status, 'Previewing…');
-        const res = await apiPost('/preview-keyword', { keyword });
-        if (!res.ok) {
-          setStatus(status, 'Preview failed.');
-          return;
-        }
-        const data = await res.json();
-        const head = 'Would block ' + data.count + ' existing handle(s)';
-        const sample = data.count > 0
-          ? ': ' + data.matches.slice(0, 10).join(', ') + (data.count > 10 ? '…' : '')
-          : '';
-        setStatus(status, head + sample);
-      };
-    });
+  document.getElementById("logout-btn").onclick = function () {
+    window.location.href = ADMIN_PATH + "/logout";
+  };
 
-    async function addToList(key, value, note, section) {
-      const status = section.querySelector('[data-role="status"]');
-      setStatus(status, 'Adding…');
-      const res = await apiPost('/config', { action: ADD_ACTION[key], value, note });
-      if (!res.ok) {
-        setStatus(status, 'Failed. HTTP ' + res.status);
-        return;
-      }
-      setStatus(status, 'Added.');
-      section.querySelector('[data-role="value"]').value = '';
-      section.querySelector('[data-role="note"]').value = '';
-      loadPolicy();
-    }
-
-    async function removeFromList(key, value) {
-      if (!confirm('Remove ' + value + ' from ' + key.replace(/_/g, ' ') + '?')) return;
-      const res = await apiPost('/config', { action: REMOVE_ACTION[key], value });
-      if (res.ok) loadPolicy();
-    }
-
-    // ==================================================================
-    // activity log
-    // ==================================================================
-    async function loadActivity() {
-      setStatus('activity-status', 'Loading…');
-      const res = await apiGet('/activity');
-      if (!res.ok) {
-        setStatus('activity-status', 'Failed to load. HTTP ' + res.status);
-        return;
-      }
-      const data = await res.json();
-      const body = document.getElementById('activity-body');
-      body.innerHTML = '';
-      const events = data.events || [];
-      for (const evt of events) {
-        const row = document.createElement('div');
-        row.className = 'activity-row' +
-          (evt.event_type.startsWith('register_blocked') ? ' blocked' : '');
-        const parts = [];
-        if (evt.did) parts.push('did=' + evt.did);
-        if (evt.sub) parts.push('sub=' + evt.sub);
-        if (evt.pds_host) parts.push('pds=' + evt.pds_host);
-        row.innerHTML =
-          '<span class="ts">' + escapeHtml(evt.ts) + '</span>' +
-          '<span class="evt">' + escapeHtml(evt.event_type) + '</span>' +
-          '<span>' + escapeHtml(parts.join(' ')) + '</span>';
-        body.appendChild(row);
-      }
-      setStatus('activity-status', events.length + ' event(s)');
-    }
-
-    // ==================================================================
-    // import / export
-    // ==================================================================
-    function exportConfig() {
-      window.location = ADMIN + '/export-config';
-    }
-
-    function exportRegistry(fmt) {
-      window.location = ADMIN + '/export-registry?format=' + fmt;
-    }
-
-    async function importConfig() {
-      const input = document.getElementById('import-config-file');
-      const file = input.files[0];
-      if (!file) {
-        setStatus('io-config-status', 'Choose a config JSON file first.');
-        return;
-      }
-      let text;
-      try { text = await file.text(); }
-      catch (_) { setStatus('io-config-status', 'Could not read file.'); return; }
-      let payload;
-      try { payload = JSON.parse(text); }
-      catch (_) { setStatus('io-config-status', 'File is not valid JSON.'); return; }
-      setStatus('io-config-status', 'Uploading config…');
-      const res = await apiPost('/import-config', payload);
-      if (res.ok) {
-        setStatus('io-config-status', 'Config imported. Refreshing…');
-        loadPolicy();
-      } else {
-        setStatus('io-config-status', 'Config import failed. HTTP ' + res.status);
-      }
-    }
-
-    async function importRegistry() {
-      const input = document.getElementById('import-registry-file');
-      const file = input.files[0];
-      if (!file) {
-        setStatus('io-registry-status', 'Choose a registry JSON file first.');
-        return;
-      }
-      let text;
-      try { text = await file.text(); }
-      catch (_) { setStatus('io-registry-status', 'Could not read file.'); return; }
-      let payload;
-      try { payload = JSON.parse(text); }
-      catch (_) { setStatus('io-registry-status', 'File is not valid JSON.'); return; }
-      if (!confirm('This will REPLACE the entire registry. Continue?')) return;
-      setStatus('io-registry-status', 'Uploading registry… (this will replace current registry)');
-      const res = await apiPost('/import-registry', payload);
-      if (res.ok) {
-        setStatus('io-registry-status', 'Registry imported.');
-        loadRegistry();
-      } else {
-        setStatus('io-registry-status', 'Registry import failed. HTTP ' + res.status);
-      }
-    }
-
-    // ==================================================================
-    // boot
-    // ==================================================================
-    loadMetrics();
+  document.getElementById("refresh-btn").onclick = function () {
     loadRegistry();
     loadPolicy();
     loadActivity();
-  </script>
+    loadTrafficMetrics();
+  };
+
+  document.getElementById("activity-refresh-btn").onclick = function () {
+    loadActivity();
+  };
+
+  async function loadRegistry() {
+    const status = document.getElementById("registry-status");
+    const tbody = document.getElementById("registry-body");
+    status.textContent = "Loading registry…";
+    tbody.innerHTML = "";
+
+    try {
+      const res = await apiGet("/dids");
+
+      if (!res.ok) {
+        status.textContent = "Failed to load registry. HTTP " + res.status;
+        registryData = [];
+        updateMetrics();
+        return;
+      }
+
+      let data;
+      try {
+        data = await res.json();
+      } catch (e) {
+        console.error("Error parsing /dids JSON:", e);
+        status.textContent = "Failed to parse registry JSON.";
+        registryData = [];
+        updateMetrics();
+        return;
+      }
+
+      const list = Array.isArray(data.dids)
+        ? data.dids
+        : (Array.isArray(data) ? data : []);
+
+      registryData = list;
+      status.textContent = "Total DIDs: " + list.length;
+      renderRegistryTable(list);
+      updateMetrics();
+    } catch (err) {
+      console.error("Network or JS error loading registry:", err);
+      status.textContent = "Failed to load registry (network or script error). Check console.";
+      registryData = [];
+      updateMetrics();
+    }
+  }
+
+  function renderRegistryTable(list) {
+    const tbody = document.getElementById("registry-body");
+    tbody.innerHTML = "";
+
+    list.forEach(function (entry) {
+      const tr = document.createElement("tr");
+
+      const isVip = vipDidsMap && entry.did && Object.prototype.hasOwnProperty.call(vipDidsMap, entry.did);
+      const isBlocked = blockDidsMap && entry.did && Object.prototype.hasOwnProperty.call(blockDidsMap, entry.did);
+
+      if (isVip) tr.classList.add("row-vip");
+      if (isBlocked) tr.classList.add("row-blocked");
+
+      const didTd = document.createElement("td");
+      const didMain = document.createElement("div");
+      didMain.textContent = entry.did || "";
+      didTd.appendChild(didMain);
+
+      const handlesArr = Array.isArray(entry.handles) ? entry.handles : [];
+      if (handlesArr.length > 0) {
+        const primary = handlesArr[0];
+        const primaryDiv = document.createElement("div");
+        primaryDiv.className = "primary-handle";
+        primaryDiv.innerHTML =
+          "<code>" + (primary.sub || "") + "." + BASE_DOMAIN + "</code>";
+        didTd.appendChild(primaryDiv);
+      }
+
+      if (isVip) {
+        const badge = document.createElement("span");
+        badge.className = "vip-badge";
+        const starSpan = document.createElement("span");
+        starSpan.className = "vip-badge-star";
+        starSpan.textContent = "★";
+        const labelSpan = document.createElement("span");
+        labelSpan.textContent = "VIP";
+        badge.appendChild(starSpan);
+        badge.appendChild(labelSpan);
+        didTd.appendChild(badge);
+      }
+
+      if (isBlocked) {
+        const badgeB = document.createElement("span");
+        badgeB.className = "blocked-badge";
+        const iconSpan = document.createElement("span");
+        iconSpan.className = "blocked-badge-icon";
+        iconSpan.textContent = "⛔";
+        const labelSpanB = document.createElement("span");
+        labelSpanB.textContent = "Blocked";
+        badgeB.appendChild(iconSpan);
+        badgeB.appendChild(labelSpanB);
+        didTd.appendChild(badgeB);
+      }
+
+      const handlesTd = document.createElement("td");
+      handlesTd.innerHTML = (entry.handles || [])
+        .map(function (h) {
+          return "<code>" + h.sub + "." + BASE_DOMAIN + "</code>";
+        })
+        .join("<br>");
+
+      const actionsTd = document.createElement("td");
+
+      if (entry.did) {
+        const bulkBtn = document.createElement("button");
+        bulkBtn.textContent = "Delete ALL";
+        bulkBtn.className = "danger";
+        bulkBtn.style.display = "block";
+        bulkBtn.style.marginBottom = "0.3rem";
+        bulkBtn.onclick = () => adminDeleteAllForDid(entry.did);
+        actionsTd.appendChild(bulkBtn);
+      }
+
+      (entry.handles || []).forEach(h => {
+        const btn = document.createElement("button");
+        btn.textContent = "Delete " + h.sub;
+        btn.className = "danger";
+        btn.style.display = "block";
+        btn.style.marginTop = "0.15rem";
+        btn.onclick = () => adminDeleteHandle(entry.did, h.sub, tr);
+        actionsTd.appendChild(btn);
+      });
+
+      tr.appendChild(didTd);
+      tr.appendChild(handlesTd);
+      tr.appendChild(actionsTd);
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function adminDeleteHandle(did, sub) {
+    if (!confirm('Delete handle "' + sub + '" for ' + did + ' ?')) return;
+    const res = await apiPost("/delete-handle", { did: did, sub: sub });
+    if (!res.ok) {
+      alert("Failed to delete. HTTP " + res.status);
+      return;
+    }
+    loadRegistry();
+    loadActivity();
+  }
+
+  async function assignReservedHandle() {
+    const didInput = document.getElementById("assign-did-input");
+    const subInput = document.getElementById("assign-sub-input");
+    const status = document.getElementById("assign-reserved-status");
+    const secretEl = document.getElementById("assign-reserved-secret");
+
+    if (!didInput || !subInput || !status || !secretEl) return;
+
+    const did = (didInput.value || "").trim();
+    const sub = (subInput.value || "").trim().toLowerCase();
+
+    status.textContent = "";
+    secretEl.textContent = "";
+
+    if (!did || !sub) {
+      status.textContent = "Enter both a DID and a reserved subdomain.";
+      return;
+    }
+
+    status.textContent = "Assigning…";
+
+    let res;
+    try {
+      res = await apiPost("/assign-handle", { did: did, sub: sub });
+    } catch (e) {
+      status.textContent = "Network error while assigning.";
+      return;
+    }
+
+    let data = {};
+    try {
+      data = await res.json();
+    } catch (e) { /* ignore */ }
+
+    if (!res.ok || !data.ok) {
+      status.textContent =
+        data.error ||
+        ("Failed to assign reserved handle. HTTP " + res.status);
+      return;
+    }
+
+    status.textContent =
+      "Assigned " + data.handle + " to " + data.did + ".";
+
+    if (data.secret_key) {
+      secretEl.textContent =
+        "New DID record created. Secret key: " + data.secret_key;
+    } else {
+      secretEl.textContent = "";
+    }
+
+    loadRegistry();
+    loadPolicy();
+  }
+
+  async function adminDeleteAllForDid(did) {
+    if (!did) return;
+    if (!confirm(
+      'Delete ALL handles for\n\n' +
+      did +
+      '\n\nThis will remove all subdomains for this DID and cannot be undone.'
+    )) {
+      return;
+    }
+
+    const res = await apiPost("/delete-did", { did: did });
+
+    if (!res.ok) {
+      alert("Failed to delete all handles. HTTP " + res.status);
+      return;
+    }
+
+    await loadRegistry();
+  }
+
+  // Convert a ConfigRow array from the rust service into the
+  // `{ value: note-or-true }` map shape the worker's renderPillList
+  // + row-highlight logic expects.
+  function toListMap(rows) {
+    const out = {};
+    (rows || []).forEach(function (r) {
+      out[r.value] = r.note || true;
+    });
+    return out;
+  }
+
+  async function loadPolicy() {
+    const status = document.getElementById("policy-status");
+    status.textContent = "Loading policy…";
+    const res = await apiGet("/config");
+    if (!res.ok) {
+      status.textContent = "Failed to load policy. HTTP " + res.status;
+      return;
+    }
+    const cfg = await res.json();
+    vipDidsMap      = toListMap(cfg.vip_dids);
+    blockDidsMap    = toListMap(cfg.blocked_dids);
+    const pdsMap    = toListMap(cfg.blocked_pds);
+    const kwMap     = toListMap(cfg.blocked_keywords);
+    const resMap    = toListMap(cfg.reserved_handles);
+    // Rust service hardcodes the handle cap at 5 (service::HANDLE_LIMIT_PER_DID)
+    // and doesn't expose it; mirror that constant here.
+    status.textContent = "Handle limit: 5 (VIPs unlimited).";
+
+    renderPillList("vip-list",             vipDidsMap,   removeVipDid);
+    renderPillList("block-did-list",       blockDidsMap, removeBlockDid);
+    renderPillList("block-pds-list",       pdsMap,       removeBlockPds);
+    renderPillList("blocked-keyword-list", kwMap,        removeBlockedKeyword);
+    renderPillList("reserved-list",        resMap,       removeReservedHandle);
+
+    if (Array.isArray(registryData) && registryData.length > 0) {
+      renderRegistryTable(registryData);
+    }
+    updateMetrics();
+  }
+
+  function renderPillList(id, obj, removeFn) {
+    const container = document.getElementById(id);
+    container.innerHTML = "";
+    Object.keys(obj || {}).forEach(function (key) {
+      const pill = document.createElement("span");
+      pill.className = "pill";
+      const label = document.createElement("span");
+      label.textContent = key;
+      const btn = document.createElement("button");
+      btn.textContent = "✕";
+      btn.onclick = function () { removeFn(key); };
+      pill.appendChild(label);
+      pill.appendChild(btn);
+      container.appendChild(pill);
+    });
+  }
+
+  // Worker-style shorthand payload ({ addVipDid: "..." }) → rust's
+  // tagged-enum shape ({ action: "addVipDid", value: "..." }).
+  async function postConfig(payload) {
+    const status = document.getElementById("policy-status");
+    const entries = Object.entries(payload || {});
+    if (entries.length !== 1) {
+      status.textContent = "postConfig: expected exactly one action key.";
+      return;
+    }
+    const [action, value] = entries[0];
+    const res = await apiPost("/config", { action: action, value: value });
+    if (!res.ok) {
+      status.textContent = "Policy update failed. HTTP " + res.status;
+      return;
+    }
+    status.textContent = "Policy updated.";
+    await loadPolicy();
+  }
+
+  async function addVipDid() {
+    const input = document.getElementById("vip-input");
+    const did = input.value.trim();
+    if (!did) return;
+    await postConfig({ addVipDid: did });
+    input.value = "";
+  }
+  async function removeVipDid(did) {
+    await postConfig({ removeVipDid: did });
+  }
+  async function addBlockDid() {
+    const input = document.getElementById("block-did-input");
+    const did = input.value.trim();
+    if (!did) return;
+    await postConfig({ addBlockDid: did });
+    input.value = "";
+  }
+  async function removeBlockDid(did) {
+    await postConfig({ removeBlockDid: did });
+  }
+
+  async function addBlockPds() {
+    const input = document.getElementById("block-pds-input");
+    const host = input.value.trim();
+    if (!host) return;
+    await postConfig({ addBlockPds: host });
+    input.value = "";
+  }
+  async function removeBlockPds(host) {
+    await postConfig({ removeBlockPds: host });
+  }
+
+  // Supports comma-separated keywords — submit each individually.
+  async function addBlockedKeyword() {
+    const input = document.getElementById("blocked-keyword-input");
+    if (!input) return;
+
+    const raw = input.value || "";
+    const pieces = raw
+      .split(",")
+      .map(s => s.trim().toLowerCase())
+      .filter(Boolean);
+
+    if (!pieces.length) return;
+
+    for (const kw of pieces) {
+      await postConfig({ addBlockKeyword: kw });
+    }
+
+    input.value = "";
+  }
+
+  async function removeBlockedKeyword(kw) {
+    await postConfig({ removeBlockKeyword: kw });
+  }
+
+  async function addReservedHandle() {
+    const input = document.getElementById("reserved-input");
+    const sub = (input.value || "").trim().toLowerCase();
+    if (!sub) return;
+    await postConfig({ addReserved: sub });
+    input.value = "";
+  }
+  async function removeReservedHandle(sub) {
+    await postConfig({ removeReserved: sub });
+  }
+
+  // Preview matches: check the substring against a built-in list of
+  // common English words so the operator can see likely false-positives
+  // *before* committing the block. A blocklist entry of "nig" would
+  // reject "knight", "benign", "signing" too — this surface makes that
+  // obvious up front.
+  async function previewBlockedKeyword() {
+    const input = document.getElementById("blocked-keyword-input");
+    const status = document.getElementById("blocked-keyword-preview-status");
+    if (!input || !status) return;
+    const raw = (input.value || "").trim();
+    if (!raw) {
+      status.textContent = "Type a keyword first.";
+      return;
+    }
+    status.textContent = "Checking…";
+    let res;
+    try {
+      res = await apiPost("/preview-keyword", { keyword: raw });
+    } catch (e) {
+      status.textContent = "Network error while previewing.";
+      return;
+    }
+    if (!res.ok) {
+      status.textContent = "Preview failed. HTTP " + res.status;
+      return;
+    }
+    const data = await res.json().catch(() => ({}));
+    const matches = Array.isArray(data.matches) ? data.matches : [];
+    const total = typeof data.count === "number" ? data.count : matches.length;
+    const keyword = (typeof data.keyword === "string" && data.keyword) || raw;
+    if (total === 0) {
+      status.textContent = "No common words contain '" + keyword + "'.";
+      return;
+    }
+    const extra = total > matches.length
+      ? " (showing " + matches.length + " of " + total + " matches)"
+      : " (" + total + " match" + (total === 1 ? "" : "es") + ")";
+    status.textContent =
+      "Common words containing '" + keyword + "': " + matches.join(", ") + extra;
+  }
+
+  document.getElementById("vip-add-btn").onclick = addVipDid;
+  document.getElementById("block-did-add-btn").onclick = addBlockDid;
+  document.getElementById("block-pds-add-btn").onclick = addBlockPds;
+  document.getElementById("reserved-add-btn").onclick = addReservedHandle;
+  document.getElementById("blocked-keyword-add-btn").onclick = addBlockedKeyword;
+  document.getElementById("blocked-keyword-preview-btn").onclick = previewBlockedKeyword;
+  document.getElementById("assign-reserved-btn").onclick = assignReservedHandle;
+
+  const exportConfigBtn  = document.getElementById("export-config-btn");
+  const exportRegJsonBtn = document.getElementById("export-registry-json-btn");
+  const exportRegCsvBtn  = document.getElementById("export-registry-csv-btn");
+  const configImportBtn  = document.getElementById("config-import-btn");
+  const registryImportBtn = document.getElementById("registry-import-btn");
+
+  if (exportConfigBtn) {
+    exportConfigBtn.onclick = function () {
+      window.location.href = ADMIN_PATH + "/export-config";
+    };
+  }
+  if (exportRegJsonBtn) {
+    exportRegJsonBtn.onclick = function () {
+      window.location.href = ADMIN_PATH + "/export-registry?format=json";
+    };
+  }
+  if (exportRegCsvBtn) {
+    exportRegCsvBtn.onclick = function () {
+      window.location.href = ADMIN_PATH + "/export-registry?format=csv";
+    };
+  }
+  if (configImportBtn) {
+    configImportBtn.onclick = importConfigFromFile;
+  }
+  if (registryImportBtn) {
+    registryImportBtn.onclick = importRegistryFromFile;
+  }
+
+  function wireEnterKey(inputId, handler) {
+    const el = document.getElementById(inputId);
+    if (!el) return;
+    el.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        handler();
+      }
+    });
+  }
+
+  wireEnterKey("vip-input", addVipDid);
+  wireEnterKey("block-did-input", addBlockDid);
+  wireEnterKey("block-pds-input", addBlockPds);
+  wireEnterKey("reserved-input", addReservedHandle);
+  wireEnterKey("blocked-keyword-input", addBlockedKeyword);
+  wireEnterKey("assign-did-input", assignReservedHandle);
+  wireEnterKey("assign-sub-input", assignReservedHandle);
+  wireEnterKey("resolve-handle-input", resolveHandleToDid);
+
+  (function () {
+    const listEl = document.getElementById("blocked-keyword-list");
+    const toggleBtn = document.getElementById("blocked-keyword-toggle-btn");
+    if (!listEl || !toggleBtn) return;
+
+    let visible = true;
+
+    function updateState() {
+      listEl.style.display = visible ? "flex" : "none";
+      toggleBtn.textContent = visible ? "Hide list" : "Show list";
+    }
+
+    toggleBtn.addEventListener("click", function () {
+      visible = !visible;
+      updateState();
+    });
+
+    updateState();
+  })();
+
+  async function importConfigFromFile() {
+    const status = document.getElementById("backup-status");
+    const input = document.getElementById("config-import-file");
+    if (!input || !input.files || !input.files[0]) {
+      if (status) status.textContent = "Choose a config JSON file first.";
+      return;
+    }
+
+    const file = input.files[0];
+    let text;
+    try {
+      text = await file.text();
+    } catch (e) {
+      if (status) status.textContent = "Could not read config file.";
+      return;
+    }
+
+    let payload;
+    try {
+      payload = JSON.parse(text);
+    } catch (e) {
+      if (status) status.textContent = "Config file is not valid JSON.";
+      return;
+    }
+
+    if (status) status.textContent = "Uploading config…";
+
+    const res = await apiPost("/import-config", payload);
+
+    if (!res.ok) {
+      if (status) status.textContent = "Config import failed. HTTP " + res.status;
+      return;
+    }
+
+    if (status) status.textContent = "Config imported. Refreshing…";
+    await loadPolicy();
+  }
+
+  async function importRegistryFromFile() {
+    const status = document.getElementById("backup-status");
+    const input = document.getElementById("registry-import-file");
+    if (!input || !input.files || !input.files[0]) {
+      if (status) status.textContent = "Choose a registry JSON file first.";
+      return;
+    }
+
+    const file = input.files[0];
+    let text;
+    try {
+      text = await file.text();
+    } catch (e) {
+      if (status) status.textContent = "Could not read registry file.";
+      return;
+    }
+
+    let payload;
+    try {
+      payload = JSON.parse(text);
+    } catch (e) {
+      if (status) status.textContent = "Registry file is not valid JSON.";
+      return;
+    }
+
+    if (status) status.textContent = "Uploading registry… (this will replace current registry)";
+
+    const res = await apiPost("/import-registry", payload);
+
+    if (!res.ok) {
+      if (status) status.textContent = "Registry import failed. HTTP " + res.status;
+      return;
+    }
+
+    const data = await res.json().catch(() => ({}));
+    if (status) {
+      // Rust returns `dids_imported` + `handles_imported`; worker reported `imported`.
+      const imported = (typeof data.dids_imported === "number")
+        ? data.dids_imported
+        : "?";
+      status.textContent =
+        "Registry imported (" + imported + " DIDs). Reloading view…";
+    }
+
+    await loadRegistry();
+    await loadActivity();
+  }
+
+  async function loadActivity() {
+    const tbody = document.getElementById("activity-body");
+    tbody.innerHTML = "";
+    const res = await apiGet("/activity");
+    if (!res.ok) {
+      const tr = document.createElement("tr");
+      const td = document.createElement("td");
+      td.colSpan = 5;
+      td.textContent = "Failed to load activity. HTTP " + res.status;
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+      return;
+    }
+    const data = await res.json();
+    // Rust returns events newest-first already — no reverse needed.
+    (data.events || []).forEach(function (ev) {
+      const tr = document.createElement("tr");
+      const timeTd = document.createElement("td");
+      timeTd.textContent = ev.ts;
+      const typeTd = document.createElement("td");
+      // Rust field is `event_type`; worker's was `type`.
+      typeTd.textContent = ev.event_type || ev.type || "";
+      const didTd = document.createElement("td");
+      didTd.textContent = ev.did || "";
+      const subTd = document.createElement("td");
+      subTd.textContent = ev.sub ? ev.sub + "." + BASE_DOMAIN : "";
+      const pdsTd = document.createElement("td");
+      // Rust field is `pds_host`; worker's was `pdsHost`.
+      pdsTd.textContent = ev.pds_host || ev.pdsHost || "";
+      tr.appendChild(timeTd);
+      tr.appendChild(typeTd);
+      tr.appendChild(didTd);
+      tr.appendChild(subTd);
+      tr.appendChild(pdsTd);
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function loadTrafficMetrics() {
+    const regEl = document.getElementById("metric-reg-hour");
+    const pdsEl = document.getElementById("metric-top-pds");
+    const ipEl  = document.getElementById("metric-ip-spikes");
+
+    if (!regEl || !pdsEl || !ipEl) return;
+
+    regEl.textContent = "…";
+    pdsEl.textContent = "…";
+    ipEl.textContent  = "unavailable";
+
+    let res;
+    try {
+      res = await apiGet("/metrics");
+    } catch (e) {
+      regEl.textContent = "error";
+      pdsEl.textContent = "error";
+      return;
+    }
+
+    if (!res.ok) {
+      regEl.textContent = "HTTP " + res.status;
+      pdsEl.textContent = "HTTP " + res.status;
+      return;
+    }
+
+    const data = await res.json().catch(() => ({}));
+
+    // Rust field is `registrations_1h`; worker's was `registrationsLastHour`.
+    const reg = typeof data.registrations_1h === "number"
+      ? data.registrations_1h
+      : (typeof data.registrationsLastHour === "number"
+          ? data.registrationsLastHour
+          : 0);
+    regEl.textContent = String(reg);
+
+    // Rust field is `top_pds_hosts`; worker's was `topPds`.
+    const topPds = Array.isArray(data.top_pds_hosts)
+      ? data.top_pds_hosts
+      : (Array.isArray(data.topPds) ? data.topPds : []);
+    if (topPds.length === 0) {
+      pdsEl.textContent = "none yet";
+    } else {
+      pdsEl.textContent = topPds
+        .map(item => item.host + " (" + item.count + ")")
+        .join(", ");
+    }
+
+    // Rust service doesn't expose per-IP metrics (no IP in activity_log),
+    // so this stays as "unavailable" unless a future schema adds it.
+  }
+
+
+  const registryFilterInput = document.getElementById("registry-filter");
+  if (registryFilterInput) {
+    registryFilterInput.addEventListener("input", function () {
+      const q = registryFilterInput.value.trim().toLowerCase();
+      if (!q) {
+        renderRegistryTable(registryData);
+        return;
+      }
+      const filtered = (registryData || []).filter(function (entry) {
+        const did = (entry.did || "").toLowerCase();
+        const subs = (entry.handles || []).map(function (h) {
+          return (h.sub || "").toLowerCase();
+        });
+        if (did.indexOf(q) !== -1) return true;
+        return subs.some(function (sub) { return sub.indexOf(q) !== -1; });
+      });
+      renderRegistryTable(filtered);
+    });
+  }
+
+  async function resolveHandleToDid() {
+    const input = document.getElementById("resolve-handle-input");
+    const status = document.getElementById("resolve-status");
+    const result = document.getElementById("resolve-result");
+    const value = (input.value || "").trim();
+    if (!value) {
+      status.textContent = "Please enter a handle.";
+      result.textContent = "";
+      return;
+    }
+    status.textContent = "Resolving…";
+    result.textContent = "";
+    let res;
+    try {
+      res = await apiPost("/resolve", { handle: value });
+    } catch (e) {
+      status.textContent = "Network error while resolving.";
+      return;
+    }
+    const data = await res.json().catch(function () { return {}; });
+    if (!res.ok || !data.ok || !data.did) {
+      status.textContent = data.error || "Could not resolve DID for this handle.";
+      result.textContent = "";
+      return;
+    }
+    status.textContent = "Resolved:";
+    result.textContent = data.did;
+  }
+
+  const resolveBtn = document.getElementById("resolve-handle-btn");
+  if (resolveBtn) {
+    resolveBtn.onclick = resolveHandleToDid;
+  }
+
+  function updateMetrics() {
+    const didsEl = document.getElementById("metric-dids");
+    const handlesEl = document.getElementById("metric-handles");
+    const vipsEl = document.getElementById("metric-vips");
+    const blockedEl = document.getElementById("metric-blocked");
+    if (!didsEl || !handlesEl || !vipsEl || !blockedEl) return;
+
+    const list = Array.isArray(registryData) ? registryData : [];
+    let handleCount = 0;
+    list.forEach(function (entry) {
+      const arr = Array.isArray(entry.handles) ? entry.handles : [];
+      handleCount += arr.length;
+    });
+
+    const vipCount = vipDidsMap ? Object.keys(vipDidsMap).length : 0;
+    const blockedCount = blockDidsMap ? Object.keys(blockDidsMap).length : 0;
+
+    didsEl.textContent = String(list.length);
+    handlesEl.textContent = String(handleCount);
+    vipsEl.textContent = String(vipCount);
+    blockedEl.textContent = String(blockedCount);
+  }
+
+  loadRegistry();
+  loadPolicy();
+  loadActivity();
+  loadTrafficMetrics();
+</script>
 </body>
 </html>

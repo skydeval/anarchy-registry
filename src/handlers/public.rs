@@ -158,24 +158,27 @@ pub async fn themes() -> Response {
 /// the random corner for a badge is picked here so every refresh can
 /// shift it (§6: "random corner per render"), and so the template can
 /// stay a pure view layer without touching `rand`.
-struct DecorationView {
-    is_sigil: bool,
-    is_badge: bool,
+///
+/// Visible to sibling handler modules (e.g. the admin login page also
+/// extends `base.html` and needs a `deco` field).
+pub(super) struct DecorationView {
+    pub(super) is_sigil: bool,
+    pub(super) is_badge: bool,
     // Sigil fields (empty when !is_sigil; templates only read them on
     // the sigil branch).
-    character: &'static str,
-    placement_css: &'static str,
-    color: &'static str,
-    size_px: u32,
-    weight: u32,
-    opacity: f32,
+    pub(super) character: &'static str,
+    pub(super) placement_css: &'static str,
+    pub(super) color: &'static str,
+    pub(super) size_px: u32,
+    pub(super) weight: u32,
+    pub(super) opacity: f32,
     // CornerBadge fields.
-    badge_corner: &'static str,
-    badge_corner_css: &'static str,
+    pub(super) badge_corner: &'static str,
+    pub(super) badge_corner_css: &'static str,
 }
 
 impl DecorationView {
-    fn from_theme(theme: &Theme) -> Self {
+    pub(super) fn from_theme(theme: &Theme) -> Self {
         match theme.decoration {
             Decoration::Sigil {
                 character,
@@ -252,7 +255,7 @@ fn corner_css(corner: &str) -> &'static str {
 /// first argument and excluded from the new pick, so a reroll never
 /// lands on the same orientation twice in a row. Must stay in sync
 /// with the JS `randomizeGradient` in `templates/base.html`.
-fn randomize_gradient_direction(bg: &str) -> String {
+pub(super) fn randomize_gradient_direction(bg: &str) -> String {
     const PREFIX: &str = "linear-gradient(";
     if !bg.starts_with(PREFIX) {
         return bg.to_string();
@@ -338,7 +341,7 @@ pub async fn about_page(State(state): State<AppState>) -> AppResult<Response> {
     })
 }
 
-fn render_page<T: Template>(tmpl: T) -> AppResult<Response> {
+pub(super) fn render_page<T: Template>(tmpl: T) -> AppResult<Response> {
     let html = tmpl
         .render()
         .map_err(|e| AppError::Internal(format!("template render: {e}")))?;

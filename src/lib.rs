@@ -16,3 +16,4 @@ pub mod routes;
 pub mod service;
 pub mod theme;
 pub mod validate;
+pub mod wordlist;
