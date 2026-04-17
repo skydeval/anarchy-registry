@@ -7,9 +7,9 @@
   <title>{% block title %}{{ base_domain }}{% endblock %}</title>
   <style>
     :root {
-      --fg-main: #ffffff;
-      --fg-muted: rgba(255,255,255,0.78);
-      --shell-radius: 14px;
+      --fg-main: #fdf4ff;
+      --fg-muted: #c7b3d7;
+      --shell-radius: 18px;
     }
     * { box-sizing: border-box; }
     body {
@@ -25,35 +25,38 @@
       background-size: cover;
       background-position: center;
     }
+    /* Opaque dark shell matching the worker: a readable dark card that
+       floats over any theme, so no per-theme "fog mode" toggle is
+       needed. The subtle pink border picks up on the pride palette
+       without depending on the background behind it. */
     .shell {
       position: relative;
-      background: rgba(255,255,255,0.14);
-      border: 1px solid rgba(255,255,255,0.22);
-      backdrop-filter: blur(12px);
+      background: rgba(5, 0, 14, 0.82);
+      backdrop-filter: blur(4px);
+      border: 1px solid rgba(255, 134, 187, 0.55);
       padding: 2rem 2rem 1.5rem 2rem;
       border-radius: var(--shell-radius);
-      max-width: 560px;
+      max-width: 420px;
       width: 100%;
-      box-shadow: 0 8px 22px rgba(0,0,0,0.4);
+      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.8);
+      color: var(--fg-main);
       z-index: 1;
     }
-    body.fog .shell {
-      background: rgba(0,0,0,0.18);
-      border-color: rgba(255,255,255,0.26);
+    /* The about page has more prose and can afford a wider, slightly
+       more translucent card so the theme gradient reads through. */
+    .shell.about-shell {
+      max-width: 560px;
+      background: rgba(5, 0, 14, 0.72);
     }
     .shell input {
       width: 100%;
       padding: 0.55rem 0.7rem;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(8, 0, 20, 0.9);
+      border: 1px solid rgba(255, 134, 187, 0.35);
       border-radius: 6px;
       color: inherit;
       font-size: 1rem;
       font-family: inherit;
-    }
-    body.fog .shell input {
-      background: rgba(255,255,255,0.16);
-      border-color: rgba(255,255,255,0.24);
     }
     .shell input:focus {
       outline: 2px solid rgba(255,255,255,0.55);
@@ -124,15 +127,39 @@
       font-size: 0.85rem;
       color: var(--fg-muted);
     }
+    /* The subdomain input overlays a rainbow-gradient ".base_domain"
+       suffix on its right edge (see worker .handle-suffix). The wrapper
+       is the positioning context; the input gets enough right-padding
+       that typed text never collides with the suffix. */
     .handle-wrapper {
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
+      position: relative;
+      width: 100%;
     }
-    .handle-wrapper input { flex: 1; }
+    .handle-wrapper input {
+      width: 100%;
+      padding-right: 7rem;
+    }
     .handle-suffix {
+      position: absolute;
+      right: 0.9rem;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
       font-size: 0.95rem;
-      color: var(--fg-muted);
+      font-weight: 600;
+      background: linear-gradient(
+        90deg,
+        #ff6b6b,
+        #ffb347,
+        #ffe76b,
+        #51d88a,
+        #4dabff,
+        #b784ff
+      );
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      text-shadow: 0 0 4px rgba(0, 0, 0, 0.7);
     }
     .footer {
       display: flex;
@@ -204,13 +231,14 @@
       transform: translateX(-50%) translateY(0);
     }
 
-    /* Dice — the exact §6 spec: naked glyph, top-left of shell header,
-       16px, opacity 0.75 → 0.85 on hover, default cursor, no chrome. */
+    /* Dice — naked glyph in the shell's top-left corner. Absolute
+       positioning keeps it out of the normal flow so nothing else in
+       the shell shifts. §6 spec: 16px, opacity 0.75 → 0.85 on hover,
+       default cursor, no chrome. */
     .dice {
       position: absolute;
-      top: 50%;
-      left: 6px;
-      transform: translateY(-50%);
+      top: 16px;
+      left: 16px;
       font-size: 16px;
       color: rgba(255,255,255,0.92);
       background: none;
@@ -281,7 +309,7 @@
     {% block extra_css %}{% endblock %}
   </style>
 </head>
-<body class="{% if theme.bright %}fog{% endif %}" data-theme="{{ theme.name }}">
+<body data-theme="{{ theme.name }}">
   {% if deco.is_sigil %}
     <div class="sigil" style="{{ deco.placement_css }} color:{{ deco.color }};font-size:{{ deco.size_px }}px;font-weight:{{ deco.weight }};opacity:{{ deco.opacity }};">{{ deco.character }}</div>
   {% else if deco.is_badge %}
@@ -292,14 +320,14 @@
     </div>
   {% endif %}
 
-  <main class="shell">
+  <main class="shell{% block shell_class %}{% endblock %}">
     <button class="dice" id="dice" type="button" aria-label="shuffle theme">🎲</button>
     {% block content %}{% endblock %}
   </main>
 
   <script>
     // Dice reroll. Fetches the full theme catalog once and swaps the
-    // live background/sigil/fog on click. Strict single source of truth:
+    // live background + sigil on click. Strict single source of truth:
     // the JS mirrors the server's `DecorationView` rendering logic so
     // nothing drifts between first paint and reroll.
     (async () => {
@@ -320,7 +348,6 @@
 
       function apply(t) {
         document.body.style.background = t.background;
-        document.body.classList.toggle('fog', !!t.bright);
         document.body.dataset.theme = t.name;
         document.querySelectorAll('.sigil, .corner-badge').forEach(n => n.remove());
         const node = buildDecoration(t.decoration);

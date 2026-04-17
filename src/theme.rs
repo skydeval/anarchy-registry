@@ -18,9 +18,11 @@ use serde::Serialize;
 pub struct Theme {
     pub name: &'static str,
     pub background: &'static str,
-    /// `true` when the background is bright enough that the default
-    /// light-tinted glass shell becomes unreadable, triggering "fog mode"
-    /// (dark-tinted glass) on the page body.
+    /// Legacy "bright background" flag from the earlier frosted-glass
+    /// shell design (§6) that needed a dark-tinted "fog mode" on
+    /// readable backgrounds. The shell is now opaque-dark in every
+    /// theme, so this field is always `false` — kept on the struct for
+    /// JSON-shape stability of `/themes`, but no code branches on it.
     pub bright: bool,
     pub decoration: Decoration,
 }
@@ -131,7 +133,7 @@ pub const ALL: &[Theme] = &[
     Theme {
         name: "Nonbinary Pride",
         background: "linear-gradient(135deg,#fff433 0%,#ffffff 25%,#9b59d0 50%,#2c2c2c 75%)",
-        bright: true,
+        bright: false,
         decoration: std_sigil("✧"),
     },
     Theme {
@@ -139,7 +141,7 @@ pub const ALL: &[Theme] = &[
         // for the SVG stroke colour that matches).
         name: "Intersex",
         background: "#ffd800",
-        bright: true,
+        bright: false,
         decoration: Decoration::CornerBadge { random_corner: true },
     },
     Theme {
@@ -181,7 +183,7 @@ pub const ALL: &[Theme] = &[
     Theme {
         name: "Aromantic",
         background: "linear-gradient(135deg,#3aa63f 0%,#a7d379 25%,#ffffff 50%,#a9a9a9 75%,#000000 100%)",
-        bright: true,
+        bright: false,
         decoration: std_sigil("❀"),
     },
     Theme {
@@ -190,13 +192,13 @@ pub const ALL: &[Theme] = &[
         // green mashup that matched no adopted flag.
         name: "Aroace",
         background: "linear-gradient(135deg,#e28c00 0%,#eccd00 25%,#ffffff 50%,#62aedc 75%,#203856 100%)",
-        bright: true,
+        bright: false,
         decoration: std_sigil("❁"),
     },
     Theme {
         name: "Autism",
         background: "linear-gradient(135deg,#ff9f1c 0%,#ff595e 20%,#ffca3a 40%,#8ac926 60%,#1982c4 80%,#6a4c93 100%)",
-        bright: true,
+        bright: false,
         decoration: Decoration::Sigil {
             character: "∞",
             placement: Placement::TopRight,
@@ -299,13 +301,12 @@ mod tests {
     }
 
     #[test]
-    fn fog_mode_themes_match_design_starting_list() {
-        // §6: "Nonbinary Pride, Intersex, Aromantic, Aroace, Autism" — this is
-        // the initial list; §6 notes it will be tuned by visual inspection.
-        let bright: Vec<&str> = ALL.iter().filter(|t| t.bright).map(|t| t.name).collect();
-        for name in ["Nonbinary Pride", "Intersex", "Aromantic", "Aroace", "Autism"] {
-            assert!(bright.contains(&name), "{name} should be fog/bright");
-        }
+    fn no_theme_is_bright_after_opaque_shell_rework() {
+        // The opaque-dark shell is readable on every background, so the
+        // bright/fog distinction from the original §6 design no longer
+        // applies. Encoded as an invariant so a future theme addition
+        // can't accidentally reintroduce a dead flag state.
+        assert!(ALL.iter().all(|t| !t.bright));
     }
 
     #[test]

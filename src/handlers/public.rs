@@ -433,7 +433,9 @@ mod tests {
     }
 
     #[test]
-    fn fog_mode_set_on_bright_theme() {
+    fn body_has_no_fog_class_after_opaque_shell_rework() {
+        // Sanity: the old fog-mode toggle is gone. The body tag should
+        // carry only the `data-theme` attribute now.
         let t = theme::ALL.iter().find(|t| t.name == "Nonbinary Pride").unwrap();
         let page = IndexPage {
             theme: t,
@@ -442,7 +444,8 @@ mod tests {
             deco: DecorationView::from_theme(t),
         };
         let html = page.render().unwrap();
-        assert!(html.contains("class=\"fog\""));
+        assert!(!html.contains("class=\"fog\""));
+        assert!(!html.contains("body.fog"));
     }
 
     #[test]
