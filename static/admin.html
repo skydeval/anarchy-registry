@@ -317,47 +317,89 @@
       padding: 0.75rem;
     }
   }
+
+  /* Visually-hidden text for screen readers only. */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .skip-link {
+    position: absolute;
+    top: -40px;
+    left: 8px;
+    background: #0b1120;
+    color: #f1f5f9;
+    padding: 8px 12px;
+    border-radius: 6px;
+    text-decoration: none;
+    z-index: 100;
+    transition: top 0.15s ease;
+  }
+  .skip-link:focus {
+    top: 8px;
+    outline: 2px solid #f1f5f9;
+    outline-offset: 2px;
+  }
+
+  /* Default browser focus ring can disappear on our colored buttons.
+     Give a visible ring for keyboard users on all interactive elements. */
+  button:focus-visible,
+  input:focus-visible,
+  [role="option"]:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 2px solid #f1f5f9;
+    outline-offset: 2px;
+  }
 </style>
 </head>
 <body>
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+  <a href="#registry-section" class="skip-link">Skip to main content</a>
+  <header style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
     <div>
       <h1>anarchy.lgbt registry <span class="version">v<span id="version-span"></span></span></h1>
       <div class="muted">Admin console</div>
     </div>
-    <div class="controls">
-      <button class="ghost" id="refresh-btn">Refresh</button>
-      <button class="danger" id="logout-btn">Logout</button>
-    </div>
-  </div>
+    <nav class="controls" aria-label="Admin actions">
+      <button type="button" class="ghost" id="refresh-btn">Refresh</button>
+      <button type="button" class="danger" id="logout-btn">Logout</button>
+    </nav>
+  </header>
 
-  <div class="metrics-strip">
+  <section class="metrics-strip" aria-label="Registry metrics">
     <div class="metric-card">
-      <div class="metric-label">DIDs</div>
-      <div class="metric-value" id="metric-dids">0</div>
+      <div class="metric-label" id="label-metric-dids">DIDs</div>
+      <div class="metric-value" id="metric-dids" aria-labelledby="label-metric-dids">0</div>
     </div>
     <div class="metric-card">
-      <div class="metric-label">Handles</div>
-      <div class="metric-value" id="metric-handles">0</div>
+      <div class="metric-label" id="label-metric-handles">Handles</div>
+      <div class="metric-value" id="metric-handles" aria-labelledby="label-metric-handles">0</div>
     </div>
     <div class="metric-card metric-vip">
-      <div class="metric-label">VIP DIDs</div>
-      <div class="metric-value" id="metric-vips">0</div>
+      <div class="metric-label" id="label-metric-vips">VIP DIDs</div>
+      <div class="metric-value" id="metric-vips" aria-labelledby="label-metric-vips">0</div>
     </div>
     <div class="metric-card metric-blocked">
-      <div class="metric-label">Blocked DIDs</div>
-      <div class="metric-value" id="metric-blocked">0</div>
+      <div class="metric-label" id="label-metric-blocked">Blocked DIDs</div>
+      <div class="metric-value" id="metric-blocked" aria-labelledby="label-metric-blocked">0</div>
     </div>
-  </div>
+  </section>
 
-  <div class="grid">
+  <main class="grid" id="registry-section">
     <div class="card">
       <div class="card-header">
         <div>
           <h2>Registry</h2>
           <div class="muted">All DIDs and their handles</div>
         </div>
-        <span class="tag"><span class="tag-dot"></span> live</span>
+        <span class="tag"><span class="tag-dot" aria-hidden="true"></span> live</span>
       </div>
 
       <div class="field-row" style="margin-top:0.35rem;">
@@ -365,17 +407,19 @@
           type="text"
           id="registry-filter"
           placeholder="Filter by DID or handle…"
+          aria-label="Filter registry by DID or handle"
         />
       </div>
 
-      <div class="status-bar" id="registry-status">Loading registry…</div>
+      <div class="status-bar" id="registry-status" role="status" aria-live="polite">Loading registry…</div>
       <div style="max-height:380px;overflow:auto;margin-top:0.5rem;">
         <table id="registry-table">
+          <caption class="sr-only">Registry of DIDs and their handles</caption>
           <thead>
             <tr>
-              <th>DID</th>
-              <th>Handles</th>
-              <th></th>
+              <th scope="col">DID</th>
+              <th scope="col">Handles</th>
+              <th scope="col"><span class="sr-only">Actions</span></th>
             </tr>
           </thead>
           <tbody id="registry-body"></tbody>
@@ -394,13 +438,14 @@
             type="text"
             id="resolve-handle-input"
             placeholder="someone.bsky.social or @someone"
+            aria-label="Bluesky handle to resolve"
           />
-          <button id="resolve-handle-btn">Resolve</button>
+          <button type="button" id="resolve-handle-btn">Resolve</button>
         </div>
-        <div class="status-bar" id="resolve-status" style="margin-top:0.6rem;">
+        <div class="status-bar" id="resolve-status" role="status" aria-live="polite" style="margin-top:0.6rem;">
           Enter a handle and click Resolve.
         </div>
-        <div class="status-bar" id="resolve-result" style="margin-top:0.3rem;"></div>
+        <div class="status-bar" id="resolve-result" aria-live="polite" style="margin-top:0.3rem;"></div>
       </div>
 
       <div style="margin-top:1rem;border-top:1px dashed rgba(148,163,184,0.5);padding-top:0.75rem;">
@@ -409,17 +454,18 @@
             <h3 style="font-size:0.95rem;">Recent activity</h3>
             <div class="muted">Latest registrations & deletions</div>
           </div>
-          <button class="ghost" id="activity-refresh-btn">Reload</button>
+          <button type="button" class="ghost" id="activity-refresh-btn">Reload</button>
         </div>
         <div style="max-height:180px;overflow:auto;margin-top:0.4rem;">
           <table>
+            <caption class="sr-only">Recent registration and deletion events</caption>
             <thead>
               <tr>
-                <th>Time</th>
-                <th>Event</th>
-                <th>DID</th>
-                <th>Handle</th>
-                <th>PDS</th>
+                <th scope="col">Time</th>
+                <th scope="col">Event</th>
+                <th scope="col">DID</th>
+                <th scope="col">Handle</th>
+                <th scope="col">PDS</th>
               </tr>
             </thead>
             <tbody id="activity-body"></tbody>
@@ -437,40 +483,40 @@
       </div>
 
       <div>
-        <h3 style="font-size:0.95rem;">VIP DIDs</h3>
+        <h3 style="font-size:0.95rem;" id="vip-heading">VIP DIDs</h3>
         <div class="muted">VIPs bypass handle-count limits.</div>
         <div class="field-row">
-          <input type="text" id="vip-input" placeholder="did:plc:examplevip" />
-          <button id="vip-add-btn">Add VIP</button>
+          <input type="text" id="vip-input" placeholder="did:plc:examplevip" aria-label="VIP DID to add" />
+          <button type="button" id="vip-add-btn">Add VIP</button>
         </div>
-        <div class="pill-list" id="vip-list"></div>
+        <div class="pill-list" id="vip-list" role="list" aria-labelledby="vip-heading"></div>
       </div>
 
 
       <div style="margin-top:1.1rem;">
-        <h3 style="font-size:0.95rem;">Blocked DIDs</h3>
+        <h3 style="font-size:0.95rem;" id="block-did-heading">Blocked DIDs</h3>
         <div class="muted">Completely forbidden from registering.</div>
         <div class="field-row">
-          <input type="text" id="block-did-input" placeholder="did:plc:blockme" />
-          <button id="block-did-add-btn">Block DID</button>
+          <input type="text" id="block-did-input" placeholder="did:plc:blockme" aria-label="DID to block" />
+          <button type="button" id="block-did-add-btn">Block DID</button>
         </div>
-        <div class="pill-list" id="block-did-list"></div>
+        <div class="pill-list" id="block-did-list" role="list" aria-labelledby="block-did-heading"></div>
       </div>
 
       <div style="margin-top:1.1rem;">
-        <h3 style="font-size:0.95rem;">Blocked PDS hosts</h3>
+        <h3 style="font-size:0.95rem;" id="block-pds-heading">Blocked PDS hosts</h3>
         <div class="muted">Block registrations coming from these hosts.</div>
         <div class="field-row">
-          <input type="text" id="block-pds-input" placeholder="pds.example.com" />
-          <button id="block-pds-add-btn">Block PDS</button>
+          <input type="text" id="block-pds-input" placeholder="pds.example.com" aria-label="PDS host to block" />
+          <button type="button" id="block-pds-add-btn">Block PDS</button>
         </div>
-        <div class="pill-list" id="block-pds-list"></div>
+        <div class="pill-list" id="block-pds-list" role="list" aria-labelledby="block-pds-heading"></div>
       </div>
 
       <div style="margin-top:1.1rem;">
         <div class="card-header" style="padding:0; margin-bottom:0.25rem;">
           <div>
-            <h3 style="font-size:0.95rem;">Blocked handle keywords</h3>
+            <h3 style="font-size:0.95rem;" id="blocked-keyword-heading">Blocked handle keywords</h3>
             <div class="muted">
               Any handle containing these substrings will be rejected. Use for slurs and other banned terms.
             </div>
@@ -480,6 +526,8 @@
             class="ghost"
             id="blocked-keyword-toggle-btn"
             style="font-size:0.75rem; padding:0.2rem 0.7rem;"
+            aria-expanded="true"
+            aria-controls="blocked-keyword-list"
           >
             Hide list
           </button>
@@ -490,26 +538,27 @@
             type="text"
             id="blocked-keyword-input"
             placeholder="comma-separated list. e.g. slur1, slur2, banned word"
+            aria-label="Keyword(s) to block, comma-separated"
           />
-          <button id="blocked-keyword-add-btn">Block keyword</button>
-          <button class="ghost" id="blocked-keyword-preview-btn">Preview matches</button>
+          <button type="button" id="blocked-keyword-add-btn">Block keyword</button>
+          <button type="button" class="ghost" id="blocked-keyword-preview-btn">Preview matches</button>
         </div>
 
-        <div class="status-bar" id="blocked-keyword-preview-status"></div>
+        <div class="status-bar" id="blocked-keyword-preview-status" role="status" aria-live="polite"></div>
 
-        <div class="pill-list" id="blocked-keyword-list"></div>
+        <div class="pill-list" id="blocked-keyword-list" role="list" aria-labelledby="blocked-keyword-heading"></div>
       </div>
 
       <div style="margin-top:1.1rem;">
-      <h3 style="font-size:0.95rem;">Reserved handles</h3>
+      <h3 style="font-size:0.95rem;" id="reserved-heading">Reserved handles</h3>
       <div class="muted">
         These subdomains cannot be claimed by users and can be assigned manually by you.
       </div>
       <div class="field-row">
-        <input type="text" id="reserved-input" placeholder="goddess" />
-        <button id="reserved-add-btn">Reserve</button>
+        <input type="text" id="reserved-input" placeholder="goddess" aria-label="Reserved subdomain to add" />
+        <button type="button" id="reserved-add-btn">Reserve</button>
       </div>
-      <div class="pill-list" id="reserved-list"></div>
+      <div class="pill-list" id="reserved-list" role="list" aria-labelledby="reserved-heading"></div>
     </div>
 
     <!-- Assign reserved handle to a DID -->
@@ -529,6 +578,7 @@
           type="text"
           id="assign-did-input"
           placeholder="did:plc:example"
+          aria-label="DID to assign reserved handle to"
         />
       </div>
 
@@ -537,14 +587,15 @@
           type="text"
           id="assign-sub-input"
           placeholder="reserved sub (e.g. goddess)"
+          aria-label="Reserved subdomain to assign"
         />
-        <button id="assign-reserved-btn">Assign</button>
+        <button type="button" id="assign-reserved-btn">Assign</button>
       </div>
 
-      <div class="status-bar" id="assign-reserved-status" style="margin-top:0.6rem;"></div>
-      <div class="status-bar" id="assign-reserved-secret" style="margin-top:0.25rem;"></div>
+      <div class="status-bar" id="assign-reserved-status" role="status" aria-live="polite" style="margin-top:0.6rem;"></div>
+      <div class="status-bar" id="assign-reserved-secret" aria-live="polite" style="margin-top:0.25rem;"></div>
 
-      <div class="status-bar" id="policy-status" style="margin-top:0.75rem;">
+      <div class="status-bar" id="policy-status" role="status" aria-live="polite" style="margin-top:0.75rem;">
         Loading policy…
       </div>
 
@@ -580,29 +631,29 @@
         </div>
 
         <div class="field-row" style="margin-top:0.6rem;">
-          <button id="export-config-btn">Download config JSON</button>
-          <button id="export-registry-json-btn">Registry JSON</button>
-          <button id="export-registry-csv-btn">Registry CSV</button>
+          <button type="button" id="export-config-btn">Download config JSON</button>
+          <button type="button" id="export-registry-json-btn">Registry JSON</button>
+          <button type="button" id="export-registry-csv-btn">Registry CSV</button>
         </div>
 
         <div class="field-row" style="margin-top:0.6rem;">
-          <input type="file" id="config-import-file" accept="application/json" />
-          <button id="config-import-btn">Import config JSON</button>
+          <input type="file" id="config-import-file" accept="application/json" aria-label="Config JSON file to import" />
+          <button type="button" id="config-import-btn">Import config JSON</button>
         </div>
 
         <div class="field-row" style="margin-top:0.4rem;">
-          <input type="file" id="registry-import-file" accept="application/json" />
-          <button id="registry-import-btn">Import registry JSON</button>
+          <input type="file" id="registry-import-file" accept="application/json" aria-label="Registry JSON file to import" />
+          <button type="button" id="registry-import-btn">Import registry JSON</button>
         </div>
 
-        <div class="status-bar" id="backup-status" style="margin-top:0.5rem;">
+        <div class="status-bar" id="backup-status" role="status" aria-live="polite" style="margin-top:0.5rem;">
           No backup actions yet.
         </div>
       </div>
 
     </div>
 
-  </div>
+  </main>
 
 <script>
   // Server-substituted constants. See src/handlers/admin.rs render_admin_console.
@@ -725,6 +776,7 @@
         badge.className = "vip-badge";
         const starSpan = document.createElement("span");
         starSpan.className = "vip-badge-star";
+        starSpan.setAttribute("aria-hidden", "true");
         starSpan.textContent = "★";
         const labelSpan = document.createElement("span");
         labelSpan.textContent = "VIP";
@@ -738,6 +790,7 @@
         badgeB.className = "blocked-badge";
         const iconSpan = document.createElement("span");
         iconSpan.className = "blocked-badge-icon";
+        iconSpan.setAttribute("aria-hidden", "true");
         iconSpan.textContent = "⛔";
         const labelSpanB = document.createElement("span");
         labelSpanB.textContent = "Blocked";
@@ -757,8 +810,10 @@
 
       if (entry.did) {
         const bulkBtn = document.createElement("button");
+        bulkBtn.type = "button";
         bulkBtn.textContent = "Delete ALL";
         bulkBtn.className = "danger";
+        bulkBtn.setAttribute("aria-label", "Delete all handles for " + entry.did);
         bulkBtn.style.display = "block";
         bulkBtn.style.marginBottom = "0.3rem";
         bulkBtn.onclick = () => adminDeleteAllForDid(entry.did);
@@ -767,8 +822,10 @@
 
       (entry.handles || []).forEach(h => {
         const btn = document.createElement("button");
+        btn.type = "button";
         btn.textContent = "Delete " + h.sub;
         btn.className = "danger";
+        btn.setAttribute("aria-label", "Delete handle " + h.sub + "." + BASE_DOMAIN);
         btn.style.display = "block";
         btn.style.marginTop = "0.15rem";
         btn.onclick = () => adminDeleteHandle(entry.did, h.sub, tr);
@@ -915,10 +972,13 @@
     Object.keys(obj || {}).forEach(function (key) {
       const pill = document.createElement("span");
       pill.className = "pill";
+      pill.setAttribute("role", "listitem");
       const label = document.createElement("span");
       label.textContent = key;
       const btn = document.createElement("button");
+      btn.type = "button";
       btn.textContent = "✕";
+      btn.setAttribute("aria-label", "Remove " + key);
       btn.onclick = function () { removeFn(key); };
       pill.appendChild(label);
       pill.appendChild(btn);
@@ -1119,6 +1179,7 @@
     function updateState() {
       listEl.style.display = visible ? "flex" : "none";
       toggleBtn.textContent = visible ? "Hide list" : "Show list";
+      toggleBtn.setAttribute("aria-expanded", visible ? "true" : "false");
     }
 
     toggleBtn.addEventListener("click", function () {

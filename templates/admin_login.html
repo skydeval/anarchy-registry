@@ -8,7 +8,7 @@
 
 {% block content %}
 <form method="post" action="{{ admin_path }}" autocomplete="off">
-  <input type="password" name="password" autocomplete="off" autofocus>
-  <button type="submit" class="primary" style="margin-top:0.8rem;">→</button>
+  <input type="password" name="password" autocomplete="off" autofocus aria-label="Password">
+  <button type="submit" class="primary" style="margin-top:0.8rem;" aria-label="Sign in"><span aria-hidden="true">→</span></button>
 </form>
 {% endblock %}

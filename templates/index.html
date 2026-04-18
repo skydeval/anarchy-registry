@@ -23,24 +23,24 @@
   <div style="margin-top:0.9rem;">
     <label for="desiredSubdomain">Handle you want:</label>
     <div class="handle-wrapper">
-      <input id="desiredSubdomain" name="desiredSubdomain" type="text" placeholder="riotgrrrl" required>
-      <span class="handle-suffix">.{{ base_domain }}</span>
+      <input id="desiredSubdomain" name="desiredSubdomain" type="text" placeholder="riotgrrrl" aria-describedby="finalHandlePreviewHint" required>
+      <span class="handle-suffix" aria-hidden="true">.{{ base_domain }}</span>
     </div>
-    <div class="hint" style="margin-top:0.35rem; font-size:0.88rem;">
+    <div id="finalHandlePreviewHint" class="hint" style="margin-top:0.35rem; font-size:0.88rem;">
       Your final handle will look like
       <code id="finalHandlePreview">riotgrrrl.{{ base_domain }}</code>
     </div>
   </div>
 
   <button type="submit" class="primary" style="margin-top:1rem;">Claim this handle</button>
-  <div id="secretKeyContainer" class="is-hidden" style="margin-top:0.5rem;"></div>
+  <div id="secretKeyContainer" class="is-hidden" role="region" aria-label="Secret key" aria-live="polite" style="margin-top:0.5rem;"></div>
 </form>
 
 <p id="secretKeyNote" class="hint is-hidden" style="margin-top:1.75rem;">
   We store only a hash of your secret key. If you lose the key, we can't
   recover it for you. That's the tradeoff for control.
 </p>
-<div id="claimStatus" class="status" style="margin-top:0.5rem;"></div>
+<div id="claimStatus" class="status" role="status" aria-live="polite" style="margin-top:0.5rem;"></div>
 {% endblock %}
 
 {% block scripts %}

@@ -325,26 +325,55 @@
     }
     .is-hidden { display: none; }
 
+    /* Visually hidden, but kept focusable so keyboard users can jump
+       past the decorative background/footer into the main content. */
+    .skip-link {
+      position: absolute;
+      top: -40px;
+      left: 8px;
+      background: #0b1120;
+      color: #f1f5f9;
+      padding: 8px 12px;
+      border-radius: 6px;
+      text-decoration: none;
+      z-index: 100;
+      transition: top 0.15s ease;
+    }
+    .skip-link:focus {
+      top: 8px;
+      outline: 2px solid #f1f5f9;
+      outline-offset: 2px;
+    }
+
+    .theme-picker-item:focus {
+      outline: none;
+      background: rgba(120, 92, 160, 0.4);
+    }
+    .theme-picker-item[aria-selected="true"] {
+      background: rgba(120, 92, 160, 0.25);
+    }
+
     {% block extra_css %}{% endblock %}
   </style>
 </head>
 <body data-theme="{{ theme.name }}">
+  <a href="#main-content" class="skip-link">Skip to main content</a>
   {% if deco.is_sigil %}
-    <div class="sigil" style="{{ deco.placement_css }} color:{{ deco.color }};font-size:{{ deco.size_px }}px;font-weight:{{ deco.weight }};opacity:{{ deco.opacity }};">{{ deco.character }}</div>
+    <div class="sigil" aria-hidden="true" style="{{ deco.placement_css }} color:{{ deco.color }};font-size:{{ deco.size_px }}px;font-weight:{{ deco.weight }};opacity:{{ deco.opacity }};">{{ deco.character }}</div>
   {% else if deco.is_badge %}
-    <div class="corner-badge" data-corner="{{ deco.badge_corner }}" style="{{ deco.badge_corner_css }} width:160px;height:160px;opacity:0.98;">
+    <div class="corner-badge" aria-hidden="true" data-corner="{{ deco.badge_corner }}" style="{{ deco.badge_corner_css }} width:160px;height:160px;opacity:0.98;">
       <svg viewBox="0 0 100 100" width="160" height="160" xmlns="http://www.w3.org/2000/svg">
         <circle cx="50" cy="50" r="24" fill="none" stroke="#7A00AC" stroke-width="10"/>
       </svg>
     </div>
   {% endif %}
 
-  <main class="shell{% block shell_class %}{% endblock %}">
+  <main id="main-content" class="shell{% block shell_class %}{% endblock %}">
     {% block shell_topleft %}{% endblock %}
     {% block content %}{% endblock %}
-    <div class="footer">
+    <div class="footer" role="contentinfo">
       <div class="footer-left-group">
-        <button class="dice" id="dice" type="button" aria-label="shuffle theme">🎲</button>
+        <button class="dice" id="dice" type="button" aria-label="Shuffle to a random theme">🎲</button>
         <div class="theme-picker" id="theme-picker">
           <button
             class="theme-picker-button"
@@ -352,8 +381,9 @@
             type="button"
             aria-haspopup="listbox"
             aria-expanded="false"
+            aria-label="Choose theme"
           ></button>
-          <div class="theme-picker-list is-hidden" id="theme-picker-list" role="listbox"></div>
+          <div class="theme-picker-list is-hidden" id="theme-picker-list" role="listbox" aria-label="Available themes"></div>
         </div>
       </div>
       <div class="footer-right">
@@ -388,14 +418,34 @@
       // Build one <div role="option"> per theme. Click on any item —
       // even the currently-active one — applies the theme (with a
       // fresh random gradient direction) and closes the list.
+      // tabindex=0 + keydown handler so keyboard users can pick a theme
+      // without a pointer; aria-selected tracks the active theme.
       for (const t of themes) {
         const item = document.createElement('div');
         item.className = 'theme-picker-item';
         item.setAttribute('role', 'option');
+        item.setAttribute('tabindex', '0');
+        if (t.name === document.body.dataset.theme) {
+          item.setAttribute('aria-selected', 'true');
+        } else {
+          item.setAttribute('aria-selected', 'false');
+        }
         item.textContent = t.name;
         item.addEventListener('click', () => {
           apply(t);
           closeList();
+          pickerButton.focus();
+        });
+        item.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            apply(t);
+            closeList();
+            pickerButton.focus();
+          } else if (e.key === 'Escape') {
+            closeList();
+            pickerButton.focus();
+          }
         });
         pickerList.appendChild(item);
       }
@@ -449,6 +499,9 @@
         document.body.style.background = randomizeGradient(t.background);
         document.body.dataset.theme = t.name;
         pickerButton.textContent = t.name;
+        pickerList.querySelectorAll('.theme-picker-item').forEach(el => {
+          el.setAttribute('aria-selected', el.textContent === t.name ? 'true' : 'false');
+        });
         document.querySelectorAll('.sigil, .corner-badge').forEach(n => n.remove());
         const node = buildDecoration(t.decoration);
         if (node) document.body.insertBefore(node, document.body.firstChild);
@@ -458,6 +511,7 @@
         if (d.type === 'sigil') {
           const s = document.createElement('div');
           s.className = 'sigil';
+          s.setAttribute('aria-hidden', 'true');
           s.textContent = d.character;
           s.setAttribute('style', placementCss(d.placement) +
             'color:' + d.color + ';' +
@@ -473,6 +527,7 @@
             : 'bottom-right';
           const wrap = document.createElement('div');
           wrap.className = 'corner-badge';
+          wrap.setAttribute('aria-hidden', 'true');
           wrap.dataset.corner = corner;
           wrap.setAttribute('style', cornerCss(corner) + 'width:160px;height:160px;opacity:0.98;');
           wrap.innerHTML =

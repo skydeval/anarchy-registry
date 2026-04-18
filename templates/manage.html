@@ -13,8 +13,8 @@
 
 <button id="load-btn" class="primary" style="margin-top:0.8rem;">Show my handles</button>
 
-<div class="status is-hidden" id="status">No lookup yet.</div>
-<div id="results" style="margin-top:0.8rem;"></div>
+<div class="status is-hidden" id="status" role="status" aria-live="polite">No lookup yet.</div>
+<div id="results" role="region" aria-label="Your handles" aria-live="polite" style="margin-top:0.8rem;"></div>
 {% endblock %}
 
 {% block scripts %}
@@ -68,7 +68,9 @@
       span.innerHTML = '<code>' + h.sub + '.' + baseDomain + '</code>';
       const btn = document.createElement('button');
       btn.className = 'danger';
+      btn.type = 'button';
       btn.textContent = 'Delete';
+      btn.setAttribute('aria-label', 'Delete ' + h.sub + '.' + baseDomain);
       btn.onclick = () => deleteHandle(secret, h.sub, row);
       row.appendChild(span);
       row.appendChild(btn);

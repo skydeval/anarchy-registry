@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cargo check *)",
+      "Bash(command -v cargo.exe)",
+      "Read(//c/Users/Chrys/.cargo/**)",
+      "Read(//c/Users/Chrys/**)",
+      "Read(//c//**)"
+    ]
+  }
+}
