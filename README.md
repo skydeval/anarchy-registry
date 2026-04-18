@@ -86,6 +86,25 @@ cargo test
 
 119 tests (99 unit + 20 integration). Integration tests drive the real Axum router via `tower::ServiceExt::oneshot` and cover registration flow, handle resolution, admin auth, CSRF gating, non-enumeration, and cache headers.
 
+## Accessibility
+
+The service targets WCAG 2.2 Level AAA compliance. A full audit was performed covering contrast ratios (7:1 enhanced), keyboard navigation, screen reader support, semantic landmarks, error suggestions, and input purpose identification.
+
+Key measures:
+
+- Skip-to-content links on every page
+- All interactive elements keyboard-focusable with visible focus indicators
+- `aria-live` regions for dynamic status updates
+- Semantic HTML landmarks (`main`, `nav`, `header`) throughout
+- Enhanced color contrast (≥7:1) on all text against dark shell backgrounds
+- Descriptive error messages with recovery suggestions
+- Consistent navigation across all pages
+- No time limits, no auto-updating content, no keyboard traps
+
+Two AAA criteria are intentionally not met: target size on the theme dice/picker (deliberately subtle per design) and focus indicator contrast on certain pride gradient backgrounds. Both are documented with reasoning in the audit notes.
+
+The full compliance matrix is maintained in the project's accessibility documentation.
+
 ## Deployment
 
 The service compiles to a single static binary (~11MB) and deploys via `scp` + `systemctl restart`. No Docker, no container runtime, no package manager on the production box.
