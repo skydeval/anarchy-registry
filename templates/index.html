@@ -1,30 +1,61 @@
 {% extends "base.html" %}
 
-{% block title %}Seize your {{ base_domain }} handle{% endblock %}
+{% block title %}Claim a handle on {{ base_domain }}{% endblock %}
+
+{% block nav_home_current %} aria-current="page"{% endblock %}
 
 {% block shell_topleft %}<a href="/a" class="corner-q" aria-label="About this project">?</a>{% endblock %}
 
-{% block footer_right %}<a href="/m">Manage / Delete handles</a>{% endblock %}
-
 {% block content %}
 <h1>Seize your {{ base_domain }} bsky handle</h1>
-<p class="hint">
-  1. Enter your current Bluesky handle.<br>
-  2. Pick a handle under {{ base_domain }}.<br>
-  3. Save your secret key somewhere safe.
-</p>
+<ol class="hint" style="padding-left:1.2rem; margin:0.7rem 0;">
+  <li>Enter your current Bluesky handle.</li>
+  <li>Pick a handle under {{ base_domain }}.</li>
+  <li>Save your secret key somewhere safe.</li>
+</ol>
 
-<form id="claimForm" autocomplete="off" novalidate>
+<form id="claimForm" autocomplete="off" novalidate aria-describedby="claimFormHint">
+  <p id="claimFormHint" class="sr-only">All fields are required. The final handle is built from the subdomain you choose plus .{{ base_domain }}.</p>
   <div>
     <label for="currentHandle">Your current Bluesky handle:</label>
-    <input id="currentHandle" name="currentHandle" type="text" placeholder="you.bsky.social" required>
+    <input
+      id="currentHandle"
+      name="currentHandle"
+      type="text"
+      placeholder="you.bsky.social"
+      autocomplete="username"
+      autocapitalize="none"
+      autocorrect="off"
+      spellcheck="false"
+      inputmode="email"
+      required
+      aria-describedby="currentHandleHint"
+    >
+    <div id="currentHandleHint" class="hint" style="font-size:0.8rem; margin-top:0.25rem;">
+      e.g. <code>alice.bsky.social</code> — the handle you use to sign in on Bluesky today.
+    </div>
   </div>
 
   <div style="margin-top:0.9rem;">
     <label for="desiredSubdomain">Handle you want:</label>
     <div class="handle-wrapper">
-      <input id="desiredSubdomain" name="desiredSubdomain" type="text" placeholder="riotgrrrl" aria-describedby="finalHandlePreviewHint" required>
+      <input
+        id="desiredSubdomain"
+        name="desiredSubdomain"
+        type="text"
+        placeholder="riotgrrrl"
+        autocomplete="off"
+        autocapitalize="none"
+        autocorrect="off"
+        spellcheck="false"
+        pattern="[a-z0-9-]+"
+        required
+        aria-describedby="finalHandlePreviewHint desiredSubdomainHint"
+      >
       <span class="handle-suffix" aria-hidden="true">.{{ base_domain }}</span>
+    </div>
+    <div id="desiredSubdomainHint" class="hint" style="font-size:0.8rem; margin-top:0.25rem;">
+      Lowercase letters, digits, and hyphens only.
     </div>
     <div id="finalHandlePreviewHint" class="hint" style="margin-top:0.35rem; font-size:0.88rem;">
       Your final handle will look like
@@ -65,10 +96,28 @@
     keyEl.innerHTML = '';
     keyNoteEl.classList.add('is-hidden');
 
-    const body = {
-      handle: form.currentHandle.value,
-      subdomain: form.desiredSubdomain.value,
-    };
+    const handle = form.currentHandle.value.trim();
+    const subdomain = form.desiredSubdomain.value.trim().toLowerCase();
+
+    // Client-side validation with concrete suggestions — WCAG AAA
+    // 3.3.3 Error Suggestion asks for *how to fix*, not just "invalid".
+    if (!handle) {
+      statusEl.textContent = 'Enter your current Bluesky handle first — the one you sign in with on bsky.app.';
+      form.currentHandle.focus();
+      return;
+    }
+    if (!subdomain) {
+      statusEl.textContent = 'Pick a subdomain. Try something like "riotgrrrl" or your nickname.';
+      form.desiredSubdomain.focus();
+      return;
+    }
+    if (!/^[a-z0-9-]+$/.test(subdomain)) {
+      statusEl.textContent = 'Subdomains can only contain lowercase letters, digits, and hyphens. Try replacing spaces or symbols.';
+      form.desiredSubdomain.focus();
+      return;
+    }
+
+    const body = { handle, subdomain };
 
     let res;
     try {
@@ -78,7 +127,7 @@
         body: JSON.stringify(body),
       });
     } catch (_) {
-      statusEl.textContent = 'Network error. Try again in a moment.';
+      statusEl.textContent = 'Network error — check your connection and try again.';
       return;
     }
 
@@ -86,7 +135,7 @@
     try { data = await res.json(); } catch (_) {}
 
     if (!res.ok) {
-      statusEl.textContent = data.error || 'Could not register this handle.';
+      statusEl.textContent = data.error || 'Could not register this handle. Double-check the handle and subdomain, then try again.';
       return;
     }
 

@@ -28,10 +28,14 @@
     /* Opaque dark shell matching the worker: a readable dark card that
        floats over any theme, so no per-theme "fog mode" toggle is
        needed. The subtle pink border picks up on the pride palette
-       without depending on the background behind it. */
+       without depending on the background behind it.
+       Opacity is 0.90 (was 0.82) so that muted text (#c7b3d7) hits
+       the WCAG AAA 7:1 threshold even when the theme behind is a
+       light stripe on a pride flag — worst-case composite luminance
+       stays dark enough that 0.495 / ~0.01 ≈ 8.9:1. */
     .shell {
       position: relative;
-      background: rgba(5, 0, 14, 0.82);
+      background: rgba(5, 0, 14, 0.90);
       backdrop-filter: blur(4px);
       border: 1px solid rgba(255, 134, 187, 0.55);
       padding: 2rem 2rem 1.5rem 2rem;
@@ -42,11 +46,13 @@
       color: var(--fg-main);
       z-index: 1;
     }
-    /* The about page has more prose and can afford a wider, slightly
-       more translucent card so the theme gradient reads through. */
+    /* The about page has more prose and can afford a wider card; it
+       also bumped from 0.72 → 0.88 opacity to keep muted text above
+       the 7:1 AAA threshold without going all the way to fully
+       opaque. */
     .shell.about-shell {
       max-width: 560px;
-      background: rgba(5, 0, 14, 0.72);
+      background: rgba(5, 0, 14, 0.88);
     }
     .shell input {
       width: 100%;
@@ -76,7 +82,10 @@
       line-height: 1.2;
     }
     .shell p {
-      margin: 0.7rem 0;
+      /* AAA 1.4.8 Visual Presentation: paragraph spacing ≥ 1.5× line
+         spacing. 1rem top/bottom margins produce 2rem between paragraphs,
+         which comfortably clears that bar at our 1rem base font size. */
+      margin: 1rem 0;
       line-height: 1.5;
       color: var(--fg-muted);
     }
@@ -164,16 +173,51 @@
     }
     .footer {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
+      flex-direction: column;
+      gap: 0.9rem;
       margin-top: 1.5rem;
       font-size: 0.85rem;
     }
+    .footer-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.8rem;
+      flex-wrap: wrap;
+    }
     .footer a {
-      color: rgba(255,255,255,0.75);
+      /* Link text is important for WCAG AAA 1.4.6 (7:1). rgba(255,255,255,0.75)
+         over the ~L=0.011 shell composite gives ~13.5:1 — well above 7:1. */
+      color: rgba(255,255,255,0.85);
       text-decoration: none;
     }
     .footer a:hover { text-decoration: underline; }
+    .footer a:focus-visible {
+      outline: 2px solid #f1f5f9;
+      outline-offset: 2px;
+      border-radius: 2px;
+    }
+    /* Sitemap nav: every themed page gets the same three destinations
+       in the same order (WCAG AAA 2.4.5 Multiple Ways / 3.2.3 Consistent
+       Navigation). Lives on its own row below the theme controls so it
+       stays obvious on narrow viewports too. */
+    .site-nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.8rem;
+      font-size: 0.8rem;
+      border-top: 1px solid rgba(255,255,255,0.12);
+      padding-top: 0.7rem;
+    }
+    .site-nav a {
+      color: rgba(255,255,255,0.85);
+      text-decoration: none;
+    }
+    .site-nav a:hover { text-decoration: underline; }
+    .site-nav a[aria-current="page"] {
+      color: #fdf4ff;
+      font-weight: 600;
+    }
     /* Rainbow "?" link in the shell's top-left corner (index page only).
        Naked character, no tooltip, no circle — easter-egg energy. */
     .corner-q {
@@ -325,6 +369,20 @@
     }
     .is-hidden { display: none; }
 
+    /* Visually hidden text that still reaches screen readers (AAA
+       3.3.2 Labels or Instructions, 3.3.3 Error Suggestion). */
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
     /* Visually hidden, but kept focusable so keyboard users can jump
        past the decorative background/footer into the main content. */
     .skip-link {
@@ -353,6 +411,31 @@
       background: rgba(120, 92, 160, 0.25);
     }
 
+    /* WCAG AAA 2.4.11 Focus Not Obscured / 2.4.7 Focus Visible:
+       every interactive element gets a visible ring by default. The
+       dice, theme-picker items, and skip-link keep their bespoke
+       rules above; this catches everything else (primary/danger
+       buttons, footer links, corner-q, inputs without explicit
+       rules). Outline offset keeps it off the element's own border. */
+    button:focus-visible,
+    a:focus-visible,
+    [tabindex]:focus-visible {
+      outline: 2px solid #f1f5f9;
+      outline-offset: 2px;
+    }
+    .corner-q:focus-visible {
+      outline: 2px solid #f1f5f9;
+      outline-offset: 4px;
+      border-radius: 4px;
+    }
+    /* Theme-picker button sits in footer prose with cursor:default; on
+       focus it still needs a ring so keyboard users see it's live. */
+    .theme-picker-button:focus-visible {
+      outline: 2px solid #f1f5f9;
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+
     {% block extra_css %}{% endblock %}
   </style>
 </head>
@@ -372,23 +455,33 @@
     {% block shell_topleft %}{% endblock %}
     {% block content %}{% endblock %}
     <div class="footer" role="contentinfo">
-      <div class="footer-left-group">
-        <button class="dice" id="dice" type="button" aria-label="Shuffle to a random theme">🎲</button>
-        <div class="theme-picker" id="theme-picker">
-          <button
-            class="theme-picker-button"
-            id="theme-picker-button"
-            type="button"
-            aria-haspopup="listbox"
-            aria-expanded="false"
-            aria-label="Choose theme"
-          ></button>
-          <div class="theme-picker-list is-hidden" id="theme-picker-list" role="listbox" aria-label="Available themes"></div>
+      <div class="footer-row">
+        <div class="footer-left-group">
+          <button class="dice" id="dice" type="button" aria-label="shuffle theme">🎲</button>
+          <div class="theme-picker" id="theme-picker">
+            <button
+              class="theme-picker-button"
+              id="theme-picker-button"
+              type="button"
+              aria-haspopup="listbox"
+              aria-expanded="false"
+              aria-label="Choose theme"
+            ></button>
+            <div class="theme-picker-list is-hidden" id="theme-picker-list" role="listbox" aria-label="Available themes"></div>
+          </div>
+        </div>
+        <div class="footer-right">
+          {% block footer_right %}{% endblock %}
         </div>
       </div>
-      <div class="footer-right">
-        {% block footer_right %}{% endblock %}
-      </div>
+      {# Child templates override exactly one of these three blocks
+         with ` aria-current="page"` (leading space included) so the
+         active link gets the attribute. Default empty = no attribute. #}
+      <nav class="site-nav" aria-label="Site navigation">
+        <a href="/"{% block nav_home_current %}{% endblock %}>Home</a>
+        <a href="/m"{% block nav_manage_current %}{% endblock %}>Manage handles</a>
+        <a href="/a"{% block nav_about_current %}{% endblock %}>About</a>
+      </nav>
     </div>
   </main>
 

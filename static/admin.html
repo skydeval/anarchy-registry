@@ -22,7 +22,10 @@
     --accent2: #7ad7ff;
     --danger: #ff5f7a;
     --text: #f7f7ff;
-    --muted: #9ca3af;
+    /* Bumped from #9ca3af → #b8bfcc so muted text on the body's radial
+       gradient clears WCAG AAA 7:1 everywhere it appears. Over the
+       lightest stop (#1f2937) ≈ 7.8:1; over panels ≈ 10:1. */
+    --muted: #b8bfcc;
     --border: rgba(148,163,184,0.5);
     --radius: 12px;
   }
@@ -33,6 +36,14 @@
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     background: radial-gradient(circle at top, #1f2937 0, #020617 55%, #000 100%);
     color: var(--text);
+    /* WCAG AAA 1.4.8 Visual Presentation: line spacing ≥ 1.5 inside
+       blocks of text. 1.5 body line-height propagates to prose
+       containers (.muted, .status-bar) unless explicitly overridden. */
+    line-height: 1.5;
+  }
+  p {
+    /* Paragraph spacing ≥ 1.5× line spacing (AAA 1.4.8). */
+    margin: 1rem 0;
   }
   h1, h2, h3 {
     margin: 0 0 0.5rem 0;
@@ -91,7 +102,9 @@
     border: 1px solid rgba(251, 191, 36, 0.8);
     font-size: 0.7rem;
     font-weight: 600;
-    background: radial-gradient(circle at top left, #facc15, #f97316);
+    /* Solid amber — the previous #facc15→#f97316 gradient dipped
+       to ~6.25:1 on its orange edge; solid amber stays ≥12:1. */
+    background: #facc15;
     color: #111827;
     white-space: nowrap;
     margin-top: 0.25rem;
@@ -108,7 +121,9 @@
     border: 1px solid rgba(239, 68, 68, 0.75);
     font-size: 0.7rem;
     font-weight: 600;
-    background: radial-gradient(circle at top left, #fca5a5, #ef4444);
+    /* Solid red-300 holds ≥9:1 for dark text; the #ef4444 stop in
+       the old gradient was only ~4.6:1 — below AAA. */
+    background: #fca5a5;
     color: #111827;
     white-space: nowrap;
     margin-top: 0.25rem;
@@ -166,15 +181,21 @@
   button {
     border-radius: 999px;
     border: 1px solid rgba(148,163,184,0.6);
-    background: radial-gradient(circle at top left,#38bdf8,#6366f1);
+    /* Solid sky-400 stays bright enough across the whole button for
+       near-black text to hold WCAG AAA 7:1 (≈9.6:1). The previous
+       radial gradient dipped to #6366f1 in corners where dark text
+       fell below 4:1. */
+    background: #38bdf8;
     color: #0b1120;
     font-size: 0.82rem;
     padding: 0.3rem 0.85rem;
     cursor: pointer;
-    font-weight: 550;
+    font-weight: 600;
   }
   button.danger {
-    background: radial-gradient(circle at top left,#fb7185,#ea580c);
+    /* Same logic as .primary: solid rose-400 keeps dark text at
+       ≈7.4:1 everywhere on the button. */
+    background: #fb7185;
     color: #0b1120;
   }
   button.ghost {
@@ -408,6 +429,8 @@
           id="registry-filter"
           placeholder="Filter by DID or handle…"
           aria-label="Filter registry by DID or handle"
+          autocomplete="off"
+          spellcheck="false"
         />
       </div>
 
@@ -439,6 +462,10 @@
             id="resolve-handle-input"
             placeholder="someone.bsky.social or @someone"
             aria-label="Bluesky handle to resolve"
+            autocomplete="off"
+            autocapitalize="none"
+            autocorrect="off"
+            spellcheck="false"
           />
           <button type="button" id="resolve-handle-btn">Resolve</button>
         </div>
@@ -486,7 +513,7 @@
         <h3 style="font-size:0.95rem;" id="vip-heading">VIP DIDs</h3>
         <div class="muted">VIPs bypass handle-count limits.</div>
         <div class="field-row">
-          <input type="text" id="vip-input" placeholder="did:plc:examplevip" aria-label="VIP DID to add" />
+          <input type="text" id="vip-input" placeholder="did:plc:examplevip" aria-label="VIP DID to add" autocomplete="off" autocapitalize="none" spellcheck="false" />
           <button type="button" id="vip-add-btn">Add VIP</button>
         </div>
         <div class="pill-list" id="vip-list" role="list" aria-labelledby="vip-heading"></div>
@@ -497,7 +524,7 @@
         <h3 style="font-size:0.95rem;" id="block-did-heading">Blocked DIDs</h3>
         <div class="muted">Completely forbidden from registering.</div>
         <div class="field-row">
-          <input type="text" id="block-did-input" placeholder="did:plc:blockme" aria-label="DID to block" />
+          <input type="text" id="block-did-input" placeholder="did:plc:blockme" aria-label="DID to block" autocomplete="off" autocapitalize="none" spellcheck="false" />
           <button type="button" id="block-did-add-btn">Block DID</button>
         </div>
         <div class="pill-list" id="block-did-list" role="list" aria-labelledby="block-did-heading"></div>
@@ -507,7 +534,7 @@
         <h3 style="font-size:0.95rem;" id="block-pds-heading">Blocked PDS hosts</h3>
         <div class="muted">Block registrations coming from these hosts.</div>
         <div class="field-row">
-          <input type="text" id="block-pds-input" placeholder="pds.example.com" aria-label="PDS host to block" />
+          <input type="text" id="block-pds-input" placeholder="pds.example.com" aria-label="PDS host to block" autocomplete="off" autocapitalize="none" spellcheck="false" />
           <button type="button" id="block-pds-add-btn">Block PDS</button>
         </div>
         <div class="pill-list" id="block-pds-list" role="list" aria-labelledby="block-pds-heading"></div>
@@ -539,6 +566,9 @@
             id="blocked-keyword-input"
             placeholder="comma-separated list. e.g. slur1, slur2, banned word"
             aria-label="Keyword(s) to block, comma-separated"
+            autocomplete="off"
+            autocapitalize="none"
+            spellcheck="false"
           />
           <button type="button" id="blocked-keyword-add-btn">Block keyword</button>
           <button type="button" class="ghost" id="blocked-keyword-preview-btn">Preview matches</button>
@@ -555,7 +585,7 @@
         These subdomains cannot be claimed by users and can be assigned manually by you.
       </div>
       <div class="field-row">
-        <input type="text" id="reserved-input" placeholder="goddess" aria-label="Reserved subdomain to add" />
+        <input type="text" id="reserved-input" placeholder="goddess" aria-label="Reserved subdomain to add" autocomplete="off" autocapitalize="none" spellcheck="false" />
         <button type="button" id="reserved-add-btn">Reserve</button>
       </div>
       <div class="pill-list" id="reserved-list" role="list" aria-labelledby="reserved-heading"></div>
@@ -579,6 +609,9 @@
           id="assign-did-input"
           placeholder="did:plc:example"
           aria-label="DID to assign reserved handle to"
+          autocomplete="off"
+          autocapitalize="none"
+          spellcheck="false"
         />
       </div>
 
@@ -588,6 +621,9 @@
           id="assign-sub-input"
           placeholder="reserved sub (e.g. goddess)"
           aria-label="Reserved subdomain to assign"
+          autocomplete="off"
+          autocapitalize="none"
+          spellcheck="false"
         />
         <button type="button" id="assign-reserved-btn">Assign</button>
       </div>

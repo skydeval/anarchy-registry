@@ -2,16 +2,29 @@
 
 {% block title %}Manage your {{ base_domain }} handles{% endblock %}
 
-{% block footer_right %}<a href="/">← Return to main page</a>{% endblock %}
+{% block nav_manage_current %} aria-current="page"{% endblock %}
 
 {% block content %}
 <h1>Manage your handles</h1>
 <p>Enter your secret key to manage/delete your registered handles on <strong>{{ base_domain }}</strong>.</p>
 
 <label for="secret-input">Secret key</label>
-<input type="text" id="secret-input" placeholder="your secret key" autocomplete="off">
+<input
+  type="text"
+  id="secret-input"
+  name="secret"
+  placeholder="your secret key"
+  autocomplete="off"
+  autocapitalize="none"
+  autocorrect="off"
+  spellcheck="false"
+  aria-describedby="secret-input-hint"
+>
+<div id="secret-input-hint" class="hint" style="font-size:0.8rem; margin-top:0.25rem;">
+  Paste the key you saved when you first claimed a handle.
+</div>
 
-<button id="load-btn" class="primary" style="margin-top:0.8rem;">Show my handles</button>
+<button id="load-btn" type="button" class="primary" style="margin-top:0.8rem;">Show my handles</button>
 
 <div class="status is-hidden" id="status" role="status" aria-live="polite">No lookup yet.</div>
 <div id="results" role="region" aria-label="Your handles" aria-live="polite" style="margin-top:0.8rem;"></div>
@@ -31,7 +44,8 @@
     status.classList.remove('is-hidden');
 
     if (!secret) {
-      status.textContent = 'Please enter your secret key.';
+      status.textContent = 'Enter the secret key you saved when you claimed a handle, then press Show my handles.';
+      document.getElementById('secret-input').focus();
       results.innerHTML = '';
       return;
     }
@@ -46,12 +60,12 @@
         body: JSON.stringify({ action: 'list', secret }),
       });
     } catch (_) {
-      status.textContent = 'Network error. Try again in a moment.';
+      status.textContent = 'Network error — check your connection and try again.';
       return;
     }
 
     if (!res.ok) {
-      status.textContent = 'Invalid secret or no handles found.';
+      status.textContent = 'That secret key didn\u2019t match any registered handles. Double-check for extra spaces or missing characters and try again.';
       return;
     }
 
