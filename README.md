@@ -4,8 +4,6 @@ A custom Bluesky handle provider for the queer internet. Users claim a subdomain
 
 **Live at [anarchy.lgbt](https://anarchy.lgbt)**
 
-![anarchy.lgbt screenshot](anarchy-preview.png)
-
 ## The story
 
 The first version of anarchy.lgbt was built in October 2025 as a Cloudflare Worker — my second project ever, written with ChatGPT, without VS Code, without git, without CLI experience. I was copy-pasting entire files across context windows to keep the project alive. It worked. It ran in production for six months with real users and zero downtime.
