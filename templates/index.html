@@ -166,6 +166,14 @@
         skv.textContent = data.secret_key + '  ✓';
         setTimeout(() => { skv.textContent = data.secret_key; }, 1200);
       });
+    } else {
+      keyEl.classList.remove('is-hidden');
+      keyEl.innerHTML =
+        '<div class="secret-key-box">' +
+          '<div class="secret-key-label">Already have a key</div>' +
+          '<p>This handle’s been added to your existing DID. Use the secret key from your first claim to manage it — same key for all your handles on <strong>' + baseDomain + '</strong>.</p>' +
+          '<p>Manage at <a href="/m">' + baseDomain + '/m</a> or the <strong>Manage handles</strong> link below.</p>' +
+        '</div>';
     }
   });
 </script>
